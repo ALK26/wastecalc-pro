@@ -15,7 +15,8 @@ import {
   Building,
   Wrench,
   Download,
-  Loader2
+  Loader2,
+  Tag
 } from 'lucide-react';
 import { 
   PricingConfig, 
@@ -33,6 +34,7 @@ import { useEntitlement } from './hooks/useEntitlement';
 const ComparisonMode = lazy(() => import('./components/ComparisonMode'));
 const LeadForm = lazy(() => import('./components/LeadForm'));
 const SavedQuotesTab = lazy(() => import('./components/SavedQuotesTab'));
+const PricingSection = lazy(() => import('./components/PricingSection'));
 
 function TabLoadingFallback() {
   return (
@@ -43,7 +45,7 @@ function TabLoadingFallback() {
   );
 }
 
-type TabType = 'calculator' | 'comparison' | 'lead' | 'saved';
+type TabType = 'calculator' | 'comparison' | 'lead' | 'saved' | 'pricing';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
@@ -165,7 +167,7 @@ export default function App() {
         </header>
 
         {/* Tactical Android Navigation Tabs */}
-        <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-1">
+        <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-1">
           
           <button
             id="tab_calculator_btn"
@@ -217,6 +219,19 @@ export default function App() {
           >
             <FolderOpen className={`w-4 h-4 ${activeTab === 'saved' ? 'text-emerald-400' : ''}`} />
             <span>Saved Portfolio</span>
+          </button>
+
+          <button
+            id="tab_pricing_btn"
+            onClick={() => setActiveTab('pricing')}
+            className={`py-3 rounded-lg text-xs font-display font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === 'pricing'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-gray-500 hover:text-gray-800 hover:bg-slate-50'
+            }`}
+          >
+            <Tag className={`w-4 h-4 ${activeTab === 'pricing' ? 'text-emerald-400' : ''}`} />
+            <span>Pricing</span>
           </button>
 
         </div>
@@ -278,6 +293,15 @@ export default function App() {
                       email={email}
                     />
                   </UpgradeGate>
+                </motion.div>
+              )}
+              {activeTab === 'pricing' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <PricingSection />
                 </motion.div>
               )}
             </Suspense>

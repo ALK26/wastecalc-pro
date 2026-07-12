@@ -133,10 +133,11 @@ export default function ContainerVisualizer({ config }: ContainerVisualizerProps
         {config.containerType === 'rel' && (() => {
           const isFel = config.selectedSize.includes('fel');
           const sizeLabel = REL_SPECS[config.selectedSize as RelSize]?.sizeName || '8yd FEL';
-          const scale = config.selectedSize.includes('6') ? 0.85 
-            : config.selectedSize.includes('8') ? 0.95 
-            : config.selectedSize.includes('10') ? 1.05
-            : config.selectedSize.includes('12') ? 1.12
+          const ydSize = parseInt(config.selectedSize, 10) || 8;
+          const scale = ydSize <= 6 ? 0.85
+            : ydSize <= 8 ? 0.95
+            : ydSize <= 10 ? 1.05
+            : ydSize <= 12 ? 1.12
             : 1.22; // 16yd
           
           return (
