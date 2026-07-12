@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Sleek Interface design theme matching industrial high-end B2B with premium Slate / Emerald palette */
+  --color-industrial-charcoal: #0f172a; /* Deep Slate 900 */
+  --color-industrial-steel: #1e293b; /* Slate 800 */
+  --color-industrial-amber: #10b981; /* Premium Emerald 500 */
+  --color-industrial-amber-hover: #059669; /* Emerald 600 */
+  --color-industrial-border: #e2e8f0; /* Crisp Slate 200 */
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+
