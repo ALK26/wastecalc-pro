@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Mail, ArrowRight, CheckCircle2, Copy, Edit2, Loader2, FileText, Send } from 'lucide-react';
+import { Mail, ArrowRight, CheckCircle2, Copy, Edit2, Loader2, FileText, Send, Download } from 'lucide-react';
 import { PricingConfig, CalculationResult, getContainerSpec, WASTE_TYPES, formatCurrency, calculatePricing } from '../types';
 
 interface LeadFormProps {
@@ -31,6 +31,8 @@ export default function LeadForm({
   const [success, setSuccess] = useState(false);
   const [draftEmail, setDraftEmail] = useState('');
   const [copied, setCopied] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     if (customerName) setCustomerName(customerName);
@@ -109,6 +111,8 @@ export default function LeadForm({
       if (response.ok && data.success) {
         setSuccess(true);
         setDraftEmail(data.draftEmail || '');
+        setEmailSent(!!data.emailSent);
+        setEmailError(data.emailError || null);
       } else {
         alert(data.error || 'Failed to submit quote request.');
       }
@@ -117,6 +121,24 @@ export default function LeadForm({
       alert('Network error. Please make sure the full-stack server is running and try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const handleDownloadPDF = async () => {
+    setPdfGenerating(true);
+    try {
+      const { generateQuotePDF } = await import('./PdfGenerator');
+      generateQuotePDF({
+        customerName: customerNameVal || 'Commercial Operations Manager',
+        companyName: companyNameVal || 'Valued Procurement Client',
+        email: emailVal,
+        config,
+        result,
+        streams,
+      });
+    } finally {
+      setPdfGenerating(false);
     }
   };
 
@@ -132,14 +154,14 @@ export default function LeadForm({
         <div>
           <h2 className="font-display font-semibold text-base flex items-center gap-2">
             <Mail className="w-5 h-5 text-emerald-400" />
-            B2B Lead Procurement & Digital Dispatch
+            AI-Drafted Commercial Proposal
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Submit calculations to the secure CRM database and draft a personalized commercial proposal.
+            Generates a ready-to-send proposal — copy the text and attach your PDF quote to send yourself.
           </p>
         </div>
         <span className="hidden sm:inline-flex text-xs items-center gap-1 bg-emerald-600/30 text-emerald-400 px-2.5 py-1 rounded font-mono font-semibold border border-emerald-500/20">
-          <Send className="w-3.5 h-3.5" /> API Connection Ready
+          <Send className="w-3.5 h-3.5" /> Drafting Ready
         </span>
       </div>
 
@@ -256,20 +278,36 @@ export default function LeadForm({
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white shadow-md">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="font-display font-bold text-lg text-slate-900">B2B Commercial Proposal Created!</h3>
+            <h3 className="font-display font-bold text-lg text-slate-900">Proposal Drafted</h3>
             <p className="text-xs text-gray-500">
-              A sales lead entry has been successfully established for <strong className="text-slate-800">{customerNameVal}</strong> ({companyNameVal || 'Independent'}).
+              Copy the text below, then download your PDF quote to attach — send both from your own email.
             </p>
+            {emailSent && (
+              <p className="text-[11px] text-emerald-600 font-semibold pt-1">
+                Bonus: we also emailed a copy to {emailVal}.
+              </p>
+            )}
           </div>
 
-          <div className="max-w-2xl mx-auto bg-slate-50 border border-slate-200 rounded-xl p-5 text-left relative group">
+          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleCopy}
-              className="absolute top-3 right-3 p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-1.5 text-[10px] font-bold text-slate-600 cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center justify-center gap-2 text-xs font-bold text-slate-700 cursor-pointer"
             >
-              <Copy className="w-3.5 h-3.5 text-emerald-500" />
-              {copied ? 'Copied Pitch!' : 'Copy Draft Pitch'}
+              <Copy className="w-4 h-4 text-emerald-500" />
+              {copied ? 'Copied!' : 'Copy Draft Text'}
             </button>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={pdfGenerating}
+              className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition flex items-center justify-center gap-2 text-xs font-bold cursor-pointer disabled:opacity-60"
+            >
+              {pdfGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
+              {pdfGenerating ? 'Preparing…' : 'Download PDF to Attach'}
+            </button>
+          </div>
+
+          <div className="max-w-2xl mx-auto bg-slate-50 border border-slate-200 rounded-xl p-5 text-left">
             <div className="text-[10px] uppercase font-bold text-slate-400 font-mono tracking-wider border-b border-slate-200 pb-2 mb-3">
               Generated consultative sales email
             </div>
