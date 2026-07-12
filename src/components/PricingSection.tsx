@@ -127,9 +127,24 @@ export default function PricingSection() {
           </ul>
 
           {hasProAccess && entitlement.tier === 'pro' ? (
-            <div className="py-2.5 text-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl">
-              {entitlement.status === 'trialing' ? `Active — ${trialDaysLeft} days left in trial` : 'Your current plan'}
-            </div>
+            entitlement.status === 'trialing' ? (
+              <div className="space-y-2">
+                <div className="py-2.5 text-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  Active — {trialDaysLeft} days left in trial
+                </div>
+                <button
+                  disabled={starting}
+                  onClick={() => startCheckout(proPrice)}
+                  className="w-full py-2 text-[11px] font-bold text-slate-500 hover:text-slate-900 transition cursor-pointer disabled:opacity-60"
+                >
+                  {starting ? 'Redirecting…' : 'Want to pay now instead? →'}
+                </button>
+              </div>
+            ) : (
+              <div className="py-2.5 text-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl">
+                Your current plan
+              </div>
+            )
           ) : (
             <button
               disabled={starting}
@@ -193,4 +208,3 @@ export default function PricingSection() {
     </div>
   );
 }
-
