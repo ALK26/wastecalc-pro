@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 export const PRICE_IDS = {
-  proAnnual: 'price_1TsLZPGRRborohIoNVB2SbdH',
-  proMonthly: 'price_1TsLZSGRRborohIo8883ncTV',
-  siteLicenseAnnual: 'price_1TsLZVGRRborohIoWKJepLTr',
-  siteLicenseMonthly: 'price_1TsLZZGRRborohIoYfVKLYd5',
+  proAnnual: 'price_1TsQLKGqhMStfMk38a374A63',
+  proMonthly: 'price_1TsQLRGqhMStfMk3E6nBrdIZ',
+  siteLicenseAnnual: 'price_1TsQLVGqhMStfMk3IDPRtfa1',
+  siteLicenseMonthly: 'price_1TsQLZGqhMStfMk3zI8a53oO',
 } as const;
 
 export function useCheckout() {

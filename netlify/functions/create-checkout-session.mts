@@ -14,10 +14,10 @@ const SUPABASE_ANON_KEY =
 // otherwise anyone could POST an arbitrary price/product and checkout would
 // happily charge whatever they specify.
 const ALLOWED_PRICE_IDS = new Set([
-  "price_1TsLZPGRRborohIoNVB2SbdH", // Pro Annual
-  "price_1TsLZSGRRborohIo8883ncTV", // Pro Monthly
-  "price_1TsLZVGRRborohIoWKJepLTr", // Site License Annual
-  "price_1TsLZZGRRborohIoYfVKLYd5", // Site License Monthly
+  "price_1TsQLKGqhMStfMk38a374A63", // Pro Annual
+  "price_1TsQLRGqhMStfMk3E6nBrdIZ", // Pro Monthly
+  "price_1TsQLVGqhMStfMk3IDPRtfa1", // Site License Annual
+  "price_1TsQLZGqhMStfMk3zI8a53oO", // Site License Monthly
 ]);
 
 async function getSupabaseUser(accessToken: string) {

@@ -9,8 +9,8 @@ const SUPABASE_ANON_KEY =
 // self-cancellable through this endpoint. Keep this in sync with the price
 // map in the Supabase stripe-webhook function.
 const MONTHLY_PRICE_IDS = new Set([
-  "price_1TsLZSGRRborohIo8883ncTV", // Pro Monthly
-  "price_1TsLZZGRRborohIoYfVKLYd5", // Site License Monthly
+  "price_1TsQLRGqhMStfMk3E6nBrdIZ", // Pro Monthly
+  "price_1TsQLZGqhMStfMk3zI8a53oO", // Site License Monthly
 ]);
 
 async function getSupabaseUser(accessToken: string) {
