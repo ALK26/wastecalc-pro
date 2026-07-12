@@ -37,10 +37,8 @@ interface ComparisonModeProps {
 }
 
 export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
-  // Currency selector state
   const [currency, setCurrency] = useState<'GBP' | 'USD' | 'EUR'>('GBP');
 
-  // Option A State
   const [typeA, setTypeA] = useState<ContainerType>('eurobin');
   const [sizeA, setSizeA] = useState<string>('1100L');
   const [quantityA, setQuantityA] = useState<number>(4);
@@ -49,7 +47,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
   const [wasteA, setWasteA] = useState<WasteTypeId>('general');
   const [enclosedA, setEnclosedA] = useState<boolean>(false);
 
-  // Option B State
   const [typeB, setTypeB] = useState<ContainerType>('rel');
   const [sizeB, setSizeB] = useState<string>('12yd_rel');
   const [quantityB, setQuantityB] = useState<number>(1);
@@ -58,13 +55,12 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
   const [wasteB, setWasteB] = useState<WasteTypeId>('general');
   const [enclosedB, setEnclosedB] = useState<boolean>(false);
 
-  // Synchronize defaults on type switches
   useEffect(() => {
     if (typeA === 'eurobin') {
       setSizeA('1100L');
       setEstWeightA(EUROBIN_SPECS['1100L'].defaultWeightAllowance);
     } else if (typeA === 'rel') {
-      setSizeA('12yd-rel');
+      setSizeA('12yd_rel');
       setEstWeightA(REL_SPECS['12yd_rel'].defaultWeightAllowance);
     } else {
       setSizeA('8yd_skip');
@@ -77,15 +73,14 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
       setSizeB('1100L');
       setEstWeightB(EUROBIN_SPECS['1100L'].defaultWeightAllowance);
     } else if (typeB === 'rel') {
-      setSizeB('12yd-rel');
-      setEstWeightB(REL_SPECS['12yd-rel'].defaultWeightAllowance);
+      setSizeB('12yd_rel');
+      setEstWeightB(REL_SPECS['12yd_rel'].defaultWeightAllowance);
     } else {
       setSizeB('8yd_skip');
       setEstWeightB(SKIPS_RORO_SPECS['8yd_skip'].defaultMinTonnage * 1000);
     }
   }, [typeB]);
 
-  // Adjust weights when sizes change
   const handleSizeAChange = (size: string) => {
     setSizeA(size);
     if (typeA === 'skips_roro') {
@@ -108,7 +103,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
     }
   };
 
-  // Compile full pricing configurations
   const specA = getContainerSpec(typeA, sizeA);
   const skipSpecA = SKIPS_RORO_SPECS[sizeA as any] || SKIPS_RORO_SPECS['8yd_skip'];
   
@@ -159,7 +153,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
   };
   const resultB = calculatePricing(configB);
 
-  // Cost analysis comparisons
   const cheaperOption = resultA.totalMonthlyCost < resultB.totalMonthlyCost ? 'A' : 'B';
   const priceDifference = Math.abs(resultA.totalMonthlyCost - resultB.totalMonthlyCost);
   const annualDifference = priceDifference * 12;
@@ -167,7 +160,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
     ? ((resultB.totalMonthlyCost - resultA.totalMonthlyCost) / resultB.totalMonthlyCost) * 100
     : ((resultA.totalMonthlyCost - resultB.totalMonthlyCost) / resultA.totalMonthlyCost) * 100;
 
-  // Render size selectors helper
   const renderSizesList = (type: ContainerType, size: string, onChange: (sz: string) => void) => {
     if (type === 'eurobin') {
       return Object.keys(EUROBIN_SPECS).map((sz) => (
@@ -220,7 +212,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
   return (
     <div className="space-y-6" id="comparison_view_container">
       
-      {/* Comparison Header Card with Summary Insight */}
       <div className="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
@@ -230,7 +221,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             <div>
               <h3 className="text-lg font-bold font-display text-white">Advanced Like-For-Like Procurement Simulator</h3>
               <p className="text-xs text-slate-400 mb-2">Compare custom container fleets, skips, and waste types side-by-side.</p>
-              {/* Currency Selector */}
               <div className="flex items-center gap-1.5 bg-slate-800/85 p-1 rounded-lg border border-slate-700/60 w-fit">
                 <span className="text-[10px] font-bold text-slate-400 uppercase font-mono px-2">Currency:</span>
                 {(['GBP', 'USD', 'EUR'] as const).map((curr) => (
@@ -265,10 +255,8 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
         </div>
       </div>
 
-      {/* Main Side-by-Side Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* OPTION A PANEL */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
           <div className="flex justify-between items-center border-b border-slate-100 pb-3">
             <h4 className="text-sm font-bold uppercase font-display text-slate-900 flex items-center gap-2">
@@ -282,7 +270,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             )}
           </div>
 
-          {/* Container Type Select */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Container Class</label>
             <div className="grid grid-cols-3 gap-2">
@@ -307,7 +294,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           </div>
 
-          {/* Size choices */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Container Size Selection</label>
             <div className="grid grid-cols-4 gap-1.5">
@@ -315,7 +301,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           </div>
 
-          {/* Waste Selection */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Material Managed</label>
             <select
@@ -329,7 +314,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </select>
           </div>
 
-          {/* Enclosed Toggle (Skips/RoRos only) */}
           {typeA === 'skips_roro' && (
             <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <span className="text-xs font-semibold text-slate-700">Enclosed Lid System (No Charge)</span>
@@ -342,7 +326,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           )}
 
-          {/* Quantity & Frequency */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Quantity</label>
@@ -374,7 +357,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           </div>
 
-          {/* Est weight slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
               <span>Avg load weight / empty</span>
@@ -391,7 +373,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             />
           </div>
 
-          {/* Cost outputs for A */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-2">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Lifts/Haulage:</span>
@@ -433,7 +414,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
 
         </div>
 
-        {/* OPTION B PANEL */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
           <div className="flex justify-between items-center border-b border-slate-100 pb-3">
             <h4 className="text-sm font-bold uppercase font-display text-slate-900 flex items-center gap-2">
@@ -447,7 +427,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             )}
           </div>
 
-          {/* Container Type Select */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Container Class</label>
             <div className="grid grid-cols-3 gap-2">
@@ -472,7 +451,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           </div>
 
-          {/* Size choices */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Container Size Selection</label>
             <div className="grid grid-cols-4 gap-1.5">
@@ -480,7 +458,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           </div>
 
-          {/* Waste Selection */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Material Managed</label>
             <select
@@ -494,7 +471,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </select>
           </div>
 
-          {/* Enclosed Toggle (Skips/RoRos only) */}
           {typeB === 'skips_roro' && (
             <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <span className="text-xs font-semibold text-slate-700">Enclosed Lid System (No Charge)</span>
@@ -507,7 +483,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           )}
 
-          {/* Quantity & Frequency */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Quantity</label>
@@ -539,7 +514,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             </div>
           </div>
 
-          {/* Est weight slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
               <span>Avg load weight / empty</span>
@@ -556,7 +530,6 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
             />
           </div>
 
-          {/* Cost outputs for B */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-2">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Lifts/Haulage:</span>
@@ -603,4 +576,3 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
     </div>
   );
 }
-
