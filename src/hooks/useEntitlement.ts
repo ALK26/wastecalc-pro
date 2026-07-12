@@ -10,6 +10,8 @@ export interface Entitlement {
   status: SubStatus;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  stripePriceId: string | null;
 }
 
 const FREE_ENTITLEMENT: Entitlement = {
@@ -17,6 +19,8 @@ const FREE_ENTITLEMENT: Entitlement = {
   status: 'free',
   trialEndsAt: null,
   currentPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+  stripePriceId: null,
 };
 
 export function useEntitlement() {
@@ -44,6 +48,8 @@ export function useEntitlement() {
         status: row.status,
         trialEndsAt: row.trial_ends_at,
         currentPeriodEnd: row.current_period_end,
+        cancelAtPeriodEnd: !!row.cancel_at_period_end,
+        stripePriceId: row.stripe_price_id,
       });
     }
     setLoading(false);
