@@ -51,7 +51,7 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
 
   // Option B State
   const [typeB, setTypeB] = useState<ContainerType>('rel');
-  const [sizeB, setSizeB] = useState<string>('12yrd');
+  const [sizeB, setSizeB] = useState<string>('12yd_rel');
   const [quantityB, setQuantityB] = useState<number>(1);
   const [freqB, setFreqB] = useState<CollectionFrequency>('weekly');
   const [estWeightB, setEstWeightB] = useState<number>(900); 
@@ -64,8 +64,8 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
       setSizeA('1100L');
       setEstWeightA(EUROBIN_SPECS['1100L'].defaultWeightAllowance);
     } else if (typeA === 'rel') {
-      setSizeA('12yrd');
-      setEstWeightA(REL_SPECS['12yrd'].defaultWeightAllowance);
+      setSizeA('12yd-rel');
+      setEstWeightA(REL_SPECS['12yd_rel'].defaultWeightAllowance);
     } else {
       setSizeA('8yd_skip');
       setEstWeightA(SKIPS_RORO_SPECS['8yd_skip'].defaultMinTonnage * 1000);
@@ -77,8 +77,8 @@ export default function ComparisonMode({ onLoadConfig }: ComparisonModeProps) {
       setSizeB('1100L');
       setEstWeightB(EUROBIN_SPECS['1100L'].defaultWeightAllowance);
     } else if (typeB === 'rel') {
-      setSizeB('12yrd');
-      setEstWeightB(REL_SPECS['12yrd'].defaultWeightAllowance);
+      setSizeB('12yd-rel');
+      setEstWeightB(REL_SPECS['12yd-rel'].defaultWeightAllowance);
     } else {
       setSizeB('8yd_skip');
       setEstWeightB(SKIPS_RORO_SPECS['8yd_skip'].defaultMinTonnage * 1000);
