@@ -87,11 +87,11 @@ export default async (req: Request) => {
     });
   } catch (err) {
     console.error("Failed to create checkout session", err);
-    return new Response(JSON.stringify({ error: "Failed to start checkout" }), { status: 500 });
+    const message = err instanceof Error ? err.message : "Failed to start checkout";
+    return new Response(JSON.stringify({ error: message }), { status: 500 });
   }
 };
 
 export const config: Config = {
   path: "/api/create-checkout-session",
 };
-

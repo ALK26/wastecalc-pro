@@ -57,8 +57,11 @@ export default function App() {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
 
-  // App-wide state for the active calculator config
-  const [calculatorConfig, setCalculatorConfig] = useState<PricingConfig>({
+  // App-wide state for the active calculator config. Restored from
+  // localStorage on load (if present) so a refresh or revisit doesn't lose
+  // whatever the person was configuring -- purely a client-side convenience,
+  // separate from "Saved Portfolio" which is an explicit, named save.
+  const DEFAULT_CALCULATOR_CONFIG: PricingConfig = {
     containerType: 'eurobin',
     selectedSize: '1100L',
     quantity: 1,
@@ -77,10 +80,34 @@ export default function App() {
     skipsMonthlyRental: 50,
     currency: 'GBP',
     enclosed: false
+  };
+
+  const [calculatorConfig, setCalculatorConfig] = useState<PricingConfig>(() => {
+    try {
+      const saved = localStorage.getItem('wcp_draft_config');
+      return saved ? { ...DEFAULT_CALCULATOR_CONFIG, ...JSON.parse(saved) } : DEFAULT_CALCULATOR_CONFIG;
+    } catch {
+      return DEFAULT_CALCULATOR_CONFIG;
+    }
   });
 
-  // App-wide state for the added waste streams
-  const [quoteStreams, setQuoteStreams] = useState<PricingConfig[]>([]);
+  // App-wide state for the added waste streams -- same restore-on-load treatment.
+  const [quoteStreams, setQuoteStreams] = useState<PricingConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem('wcp_draft_streams');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('wcp_draft_config', JSON.stringify(calculatorConfig));
+  }, [calculatorConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('wcp_draft_streams', JSON.stringify(quoteStreams));
+  }, [quoteStreams]);
 
   const { user } = useAuth();
   const { hasProAccess, trialDaysLeft, entitlement, refetch: refetchEntitlement } = useEntitlement();
