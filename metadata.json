@@ -1,0 +1,6 @@
+{
+  "name": "WasteCalc Pro",
+  "description": "An industrial-grade B2B waste management calculator featuring detailed pricing calculations, container comparison mode, lead generation, and professional PDF quotes for commercial waste disposal services.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
