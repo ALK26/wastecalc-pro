@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './useAuth';
 
@@ -23,7 +23,23 @@ const FREE_ENTITLEMENT: Entitlement = {
   stripePriceId: null,
 };
 
-export function useEntitlement() {
+interface EntitlementContextValue {
+  entitlement: Entitlement;
+  hasProAccess: boolean;
+  trialDaysLeft: number | null;
+  loading: boolean;
+  refetch: () => Promise<void>;
+}
+
+const EntitlementContext = createContext<EntitlementContextValue | undefined>(undefined);
+
+// Fetched ONCE per sign-in state change and shared across the whole app via
+// context -- every screen that needs entitlement (UpgradeGate, PricingSection,
+// the header badge, etc.) reads the same cached value instead of each
+// independently re-querying Supabase on every mount. This is what was
+// causing tabs to look blank/slow on first visit but "fix itself" on a
+// second visit: each mount used to run its own fresh, uncached fetch.
+export function EntitlementProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [entitlement, setEntitlement] = useState<Entitlement>(FREE_ENTITLEMENT);
   const [loading, setLoading] = useState(true);
@@ -35,9 +51,6 @@ export function useEntitlement() {
       return;
     }
     setLoading(true);
-    // get_my_entitlement() is a Postgres function scoped by RLS to the
-    // signed-in user (auth.uid()) -- resolves personal Pro or org Site
-    // License, whichever applies. Returns zero rows for a plain free user.
     const { data, error } = await supabase.rpc('get_my_entitlement');
     if (error || !data || data.length === 0) {
       setEntitlement(FREE_ENTITLEMENT);
@@ -57,14 +70,24 @@ export function useEntitlement() {
 
   useEffect(() => {
     refetch();
-  }, [refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const hasProAccess = entitlement.status === 'active' || entitlement.status === 'trialing';
-
   const trialDaysLeft = entitlement.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(entitlement.trialEndsAt).getTime() - Date.now()) / 86_400_000))
     : null;
 
-  return { entitlement, hasProAccess, trialDaysLeft, loading, refetch };
+  return (
+    <EntitlementContext.Provider value={{ entitlement, hasProAccess, trialDaysLeft, loading, refetch }}>
+      {children}
+    </EntitlementContext.Provider>
+  );
+}
+
+export function useEntitlement() {
+  const ctx = useContext(EntitlementContext);
+  if (!ctx) throw new Error('useEntitlement must be used within EntitlementProvider');
+  return ctx;
 }
 
