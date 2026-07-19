@@ -15,6 +15,168 @@ interface QuotePDFData {
   streams?: PricingConfig[];
 }
 
+interface ESGReportData {
+  customerName: string;
+  companyName: string;
+  config: PricingConfig;
+  result: CalculationResult;
+}
+
+// A dedicated sustainability/ESG report, separate from the commercial quote
+// PDF. Every figure here is a planning estimate based on standard
+// industry-typical assumptions per material type -- NOT measured, audited,
+// or independently verified data. This report says so explicitly and
+// discloses the exact assumption values used, so nobody mistakes it for
+// certified compliance data.
+export function generateESGReportPDF(data: ESGReportData): void {
+  const { customerName, companyName, config, result } = data;
+  const wasteSpec = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
+  const spec = getContainerSpec(config.containerType, config.selectedSize);
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const currentDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const recyclingRatePercent = (result.recyclingRate * 100).toFixed(0);
+  const isCustomRate = !!config.customRecyclingRateEnabled;
+  const co2Monthly = result.co2SavedKgPerMonth;
+  const co2Annual = co2Monthly * 12;
+  const prnMonthly = result.prnEstimate;
+  const prnAnnual = prnMonthly * 12;
+
+  let y = 20;
+
+  // Header
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, 210, 32, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('WasteCalc Pro', 14, 15);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sustainability & ESG Estimate Report', 14, 22);
+  doc.setFontSize(8);
+  doc.setTextColor(180, 200, 220);
+  doc.text(`Generated ${currentDate}`, 14, 28);
+
+  y = 42;
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Prepared for:', 14, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${customerName}${companyName ? ' — ' + companyName : ''}`, 45, y);
+
+  // Prominent disclaimer box, right at the top -- not buried at the bottom
+  y += 10;
+  doc.setDrawColor(245, 158, 11); // amber-500
+  doc.setFillColor(255, 251, 235); // amber-50
+  doc.roundedRect(14, y, 182, 22, 2, 2, 'FD');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(146, 64, 14); // amber-800
+  doc.text('This is an estimate, not audited or certified data.', 18, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  const disclaimerLines = doc.splitTextToSize(
+    'Figures are calculated from standard industry-typical assumptions per waste material type (shown below), not from measured or independently verified data. For formal SECR, CSRD, or other regulatory ESG disclosure, cross-check against your waste carrier\'s actual transfer records and current authoritative emission factor sources (e.g. UK Government GHG Conversion Factors for Company Reporting).',
+    174
+  );
+  doc.text(disclaimerLines, 18, y + 11);
+
+  y += 30;
+
+  // Waste stream summary
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 30, 30);
+  doc.text('Waste Stream', 14, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const summaryRows: [string, string][] = [
+    ['Material type', wasteSpec.label],
+    ['Container', `${config.quantity} x ${spec.volumeLabel || config.selectedSize} (${config.containerType.toUpperCase()})`],
+    ['Collection frequency', config.frequency.replace(/_/g, ' ')],
+    ['Estimated monthly weight', `${result.totalWeightKgPerMonth.toFixed(0)} kg`],
+  ];
+  summaryRows.forEach(([label, value]) => {
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, 14, y);
+    doc.setTextColor(30, 30, 30);
+    doc.text(value, 80, y);
+    y += 6;
+  });
+
+  y += 6;
+
+  // Key metrics
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Estimated Impact', 14, y);
+  y += 8;
+
+  const metricBox = (label: string, monthlyVal: string, annualVal: string, x: number) => {
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(x, y, 58, 26, 2, 2, 'FD');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, x + 4, y + 7);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(monthlyVal, x + 4, y + 16);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${annualVal} / year`, x + 4, y + 22);
+  };
+
+  metricBox('RECYCLING RATE', `${recyclingRatePercent}%`, isCustomRate ? 'custom figure' : 'material default', 14);
+  metricBox('CO2 SAVED / MONTH', `${co2Monthly.toFixed(0)} kg`, `${co2Annual.toFixed(0)} kg`, 76);
+  metricBox('PRN VALUE / MONTH', `£${prnMonthly.toFixed(2)}`, `£${prnAnnual.toFixed(2)}`, 138);
+
+  y += 36;
+
+  // Assumptions disclosure table -- the actual numbers used, in full
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  doc.text('Assumptions Used In This Calculation', 14, y);
+  y += 7;
+
+  const assumptionRows: [string, string][] = [
+    [
+      'Recycling rate applied',
+      `${recyclingRatePercent}% (${isCustomRate ? 'manually overridden by user' : `default assumption for ${wasteSpec.label}`})`,
+    ],
+    ['CO2 saving factor', `${wasteSpec.carbonSavingFactor} kg CO2e saved per kg recycled (${wasteSpec.label} default)`],
+    ['PRN value factor', `£${wasteSpec.prnFactor.toFixed(2)} per kg recycled (${wasteSpec.label} default)`],
+  ];
+
+  doc.setFontSize(8.5);
+  assumptionRows.forEach(([label, value]) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(60, 60, 60);
+    doc.text(label + ':', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(30, 30, 30);
+    const wrapped = doc.splitTextToSize(value, 120);
+    doc.text(wrapped, 70, y);
+    y += 6 * wrapped.length + 2;
+  });
+
+  // Footer
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text('WasteCalc Pro — wastecalcpro.co.uk', 14, 285);
+  doc.text('Estimate only. Not a certified or audited ESG disclosure.', 130, 285);
+
+  doc.save(`WasteCalc-Pro-ESG-Report-${companyName.replace(/[^a-z0-9]/gi, '-') || 'Report'}.pdf`);
+}
+
 export function generateQuotePDF(data: QuotePDFData): void {
   const { customerName, companyName, email, config, result } = data;
   const spec = getContainerSpec(config.containerType, config.selectedSize);
@@ -320,6 +482,11 @@ export function generateQuotePDF(data: QuotePDFData): void {
     doc.text(`£${result.prnEstimate.toFixed(2)} est. value`, 50, y + 24);
   }
 
+  doc.setFont('Helvetica', 'italic');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('Recycling rate, CO2, and PRN figures are estimates based on standard industry assumptions, not audited or measured data.', 14, y + 30);
+
   // 5. Weight Allowance Warning Box
   y = y + 36;
   doc.setFillColor(239, 253, 245); // light green/emerald tint
@@ -331,7 +498,7 @@ export function generateQuotePDF(data: QuotePDFData): void {
   doc.setTextColor(6, 95, 70); // green text dark
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('SUSTAINABILITY & COMPLIANCE VERIFICATION STATEMENT', 18, y + 5);
+  doc.text('WEIGHT ALLOWANCE & OVERWEIGHT FEE NOTICE', 18, y + 5);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
   
@@ -378,4 +545,3 @@ export function generateQuotePDF(data: QuotePDFData): void {
   const slug = companyName ? companyName.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'client';
   doc.save(`WasteCalcPro_Quote_${slug}.pdf`);
 }
-
