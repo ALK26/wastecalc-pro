@@ -18,9 +18,9 @@ import {
 } from 'lucide-react';
 import {
   PricingConfig,
-  CalculationResult,
   WASTE_TYPES,
-  getContainerSpec
+  getContainerSpec,
+  aggregateQuoteStreams
 } from '../types';
 import {
   ResponsiveContainer,
@@ -39,30 +39,30 @@ import { generateQuotePDF } from './PdfGenerator';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 
-// A quote row as stored in (and returned from) Supabase.
+// A quote row as stored in (and returned from) Supabase. `streams` is the
+// full multi-container portfolio -- e.g. a Eurobin + REL + RoRo together --
+// not just a single container. This is what makes Compare Mode able to
+// compare whole quotes rather than one container against another.
 interface SavedQuoteRow {
   id: string;
   title: string;
-  config: PricingConfig;
-  result: CalculationResult;
+  streams: PricingConfig[];
   customer_name: string | null;
   company_name: string | null;
   created_at: string;
 }
 
 interface SavedQuotesTabProps {
-  currentConfig: PricingConfig;
-  currentResult: CalculationResult;
-  onLoadConfig: (config: PricingConfig) => void;
+  currentStreams: PricingConfig[];
+  onLoadStreams: (streams: PricingConfig[]) => void;
   customerName: string;
   companyName: string;
   email: string;
 }
 
 export default function SavedQuotesTab({
-  currentConfig,
-  currentResult,
-  onLoadConfig,
+  currentStreams,
+  onLoadStreams,
   customerName,
   companyName,
 }: SavedQuotesTabProps) {
@@ -81,7 +81,7 @@ export default function SavedQuotesTab({
     setQuotesLoading(true);
     const { data, error } = await supabase
       .from('saved_quotes')
-      .select('*')
+      .select('id, title, streams, customer_name, company_name, created_at')
       .order('created_at', { ascending: false });
     if (error) {
       setErrorMsg('Failed to load your saved quotes.');
@@ -102,15 +102,18 @@ export default function SavedQuotesTab({
     setSuccessMsg('');
 
     if (!saveTitle.trim() || !user) {
-      setErrorMsg('Please enter a descriptive label for this quote configuration.');
+      setErrorMsg('Please enter a descriptive label for this quote.');
+      return;
+    }
+    if (!currentStreams || currentStreams.length === 0) {
+      setErrorMsg('Nothing to save yet -- configure a container on the Calculator tab first.');
       return;
     }
 
     const { error } = await supabase.from('saved_quotes').insert({
       owner_id: user.id,
       title: saveTitle,
-      config: currentConfig,
-      result: currentResult,
+      streams: currentStreams,
       customer_name: customerName || null,
       company_name: companyName || null,
     });
@@ -138,26 +141,32 @@ export default function SavedQuotesTab({
 
   const handleDownloadSavedQuotePDF = (quote: SavedQuoteRow, event: React.MouseEvent) => {
     event.stopPropagation();
+    const agg = aggregateQuoteStreams(quote.streams);
+    const primary = quote.streams[0];
     generateQuotePDF({
       customerName: quote.customer_name || 'Commercial Operations Manager',
       companyName: quote.company_name || 'Valued Procurement Client',
       email: user?.email || '',
-      config: quote.config,
-      result: quote.result
+      config: primary,
+      result: {
+        totalMonthlyCost: agg.totalMonthlyCost,
+        totalAnnualCost: agg.totalAnnualCost,
+        totalWeightKgPerMonth: agg.totalWeightKgPerMonth,
+        recycledWeightKgPerMonth: agg.recycledWeightKgPerMonth,
+        recyclingRate: agg.recyclingRate,
+        co2SavedKgPerMonth: agg.co2SavedKgPerMonth,
+        prnEstimate: agg.prnEstimate,
+      } as any,
+      streams: quote.streams,
     });
   };
 
-  // Aggregated analytics values for charts
-  const totalWeight = savedQuotes.reduce((acc, q) => acc + q.result.totalWeightKgPerMonth, 0);
-  const recycledWeight = savedQuotes.reduce((acc, q) => acc + q.result.recycledWeightKgPerMonth, 0);
+  // Aggregated analytics across ALL saved quotes (every stream in every quote)
+  const allStreams = savedQuotes.flatMap((q) => q.streams);
+  const portfolioAgg = aggregateQuoteStreams(allStreams);
+  const totalWeight = portfolioAgg.totalWeightKgPerMonth;
+  const recycledWeight = portfolioAgg.recycledWeightKgPerMonth;
   const landfillWeight = totalWeight - recycledWeight;
-  const totalCO2Saved = savedQuotes.reduce((acc, q) => acc + q.result.co2SavedKgPerMonth, 0);
-  const totalPRNValue = savedQuotes.reduce((acc, q) => acc + (q.result.prnEstimate || 0), 0);
-  const totalAnnualValue = savedQuotes.reduce((acc, q) => acc + q.result.totalAnnualCost, 0);
-
-  const avgRecyclingRate = savedQuotes.length > 0
-    ? (savedQuotes.reduce((acc, q) => acc + q.result.recyclingRate, 0) / savedQuotes.length) * 100
-    : 0;
 
   const pieData = [
     { name: 'Recycled', value: Math.round(recycledWeight), color: '#10b981' },
@@ -166,13 +175,12 @@ export default function SavedQuotesTab({
 
   const materialData = Object.keys(WASTE_TYPES).map(key => {
     const wasteTypeId = key as any;
-    const count = savedQuotes.filter(q => q.config.wasteType === wasteTypeId).length;
-    const weight = savedQuotes.filter(q => q.config.wasteType === wasteTypeId)
-      .reduce((acc, q) => acc + q.result.totalWeightKgPerMonth, 0);
+    const matching = allStreams.filter(s => s.wasteType === wasteTypeId);
+    const weight = matching.reduce((acc, s) => acc + aggregateQuoteStreams([s]).totalWeightKgPerMonth, 0);
     return {
       name: WASTE_TYPES[wasteTypeId]?.label || wasteTypeId,
       weight: Math.round(weight),
-      quotes: count
+      quotes: matching.length
     };
   }).filter(item => item.weight > 0);
 
@@ -204,14 +212,16 @@ export default function SavedQuotesTab({
 
           <form onSubmit={handleSaveQuote} className="bg-slate-50 p-4 rounded-xl border border-slate-200/50 flex flex-col sm:flex-row gap-3 items-end">
             <div className="flex-1 w-full">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Save Current Workspace State</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                Save Current Quote {currentStreams.length > 1 && `(${currentStreams.length} containers)`}
+              </label>
               <div className="relative">
                 <Save className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
                   value={saveTitle}
                   onChange={(e) => setSaveTitle(e.target.value)}
-                  placeholder="e.g. London Site - Weekly Cardboard Rel"
+                  placeholder="e.g. London Site - Full Setup"
                   className="w-full bg-white border border-slate-200 rounded-xl py-2 px-9 text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
                   required
                 />
@@ -256,11 +266,14 @@ export default function SavedQuotesTab({
           ) : (
             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
               {savedQuotes.map((quote) => {
-                const cSpec = getContainerSpec(quote.config.containerType, quote.config.selectedSize);
+                const agg = aggregateQuoteStreams(quote.streams);
+                const containerSummary = quote.streams
+                  .map(s => getContainerSpec(s.containerType, s.selectedSize)?.volumeLabel || s.selectedSize)
+                  .join(' + ');
                 return (
                   <div
                     key={quote.id}
-                    onClick={() => onLoadConfig(quote.config)}
+                    onClick={() => onLoadStreams(quote.streams)}
                     className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/10 transition cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 group relative"
                   >
                     <div>
@@ -271,22 +284,19 @@ export default function SavedQuotesTab({
                             day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
                           })}
                         </span>
+                        <span className="text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-mono font-bold">
+                          {quote.streams.length} stream{quote.streams.length !== 1 ? 's' : ''}
+                        </span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
-                        <span><strong>Class:</strong> {quote.config.containerType.toUpperCase()}</span>
-                        <span>•</span>
-                        <span><strong>Size:</strong> {cSpec.volumeLabel || quote.config.selectedSize}</span>
-                        <span>•</span>
-                        <span><strong>Qty:</strong> {quote.config.quantity}</span>
-                        <span>•</span>
-                        <span><strong>Material:</strong> {WASTE_TYPES[quote.config.wasteType]?.label || quote.config.wasteType}</span>
+                      <div className="text-[10px] text-slate-500 mt-1">
+                        {containerSummary}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 self-end sm:self-auto">
                       <div className="text-right">
                         <p className="text-[9px] text-slate-400 font-mono uppercase">Annual Net</p>
-                        <p className="text-xs font-bold text-emerald-600">£{quote.result.totalAnnualCost.toLocaleString('en-GB', { maximumFractionDigits: 2 })}</p>
+                        <p className="text-xs font-bold text-emerald-600">£{agg.totalAnnualCost.toLocaleString('en-GB', { maximumFractionDigits: 2 })}</p>
                       </div>
 
                       <div className="flex gap-1">
@@ -327,25 +337,25 @@ export default function SavedQuotesTab({
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">Average recycling</p>
-              <p className="text-xl font-bold text-emerald-600 mt-1">{avgRecyclingRate.toFixed(0)}%</p>
+              <p className="text-xl font-bold text-emerald-600 mt-1">{(portfolioAgg.recyclingRate * 100).toFixed(0)}%</p>
               <span className="text-[8px] text-slate-400">across portfolio</span>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">CO2 Avoided</p>
-              <p className="text-xl font-bold text-slate-800 mt-1">{(totalCO2Saved).toFixed(0)} kg</p>
+              <p className="text-xl font-bold text-slate-800 mt-1">{(portfolioAgg.co2SavedKgPerMonth).toFixed(0)} kg</p>
               <span className="text-[8px] text-emerald-500 font-semibold">CO2e emissions</span>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">PRN Revenue Value</p>
-              <p className="text-xl font-bold text-slate-800 mt-1">£{(totalPRNValue).toFixed(2)}</p>
+              <p className="text-xl font-bold text-slate-800 mt-1">£{(portfolioAgg.prnEstimate).toFixed(2)}</p>
               <span className="text-[8px] text-slate-400">est. Packaging offset</span>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">Active Net Value</p>
-              <p className="text-xl font-bold text-slate-800 mt-1">£{(totalAnnualValue / 12).toLocaleString('en-GB', { maximumFractionDigits: 0 })}</p>
+              <p className="text-xl font-bold text-slate-800 mt-1">£{(portfolioAgg.totalMonthlyCost).toLocaleString('en-GB', { maximumFractionDigits: 0 })}</p>
               <span className="text-[8px] text-slate-400">aggregated monthly spend</span>
             </div>
           </div>
@@ -361,7 +371,7 @@ export default function SavedQuotesTab({
           </div>
 
           <div className="h-52 w-full flex items-center justify-center">
-            {savedQuotes.length === 0 ? (
+            {allStreams.length === 0 ? (
               <div className="text-slate-400 italic text-xs text-center">
                 Visual diagram is populated once configurations are saved.
               </div>
@@ -399,7 +409,7 @@ export default function SavedQuotesTab({
           </div>
 
           <div className="h-56 w-full flex items-center justify-center">
-            {savedQuotes.length === 0 || materialData.length === 0 ? (
+            {allStreams.length === 0 || materialData.length === 0 ? (
               <div className="text-slate-400 italic text-xs text-center">
                 Detailed material breakdown generates with calculating sessions.
               </div>

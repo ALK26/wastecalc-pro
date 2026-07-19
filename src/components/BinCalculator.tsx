@@ -33,7 +33,8 @@ import {
   WASTE_TYPES,
   WasteTypeId,
   calculatePricing,
-  formatCurrency
+  formatCurrency,
+  aggregateQuoteStreams
 } from '../types';
 import ContainerVisualizer from './ContainerVisualizer';
 import CircularityDashboard from './CircularityDashboard';
@@ -84,30 +85,14 @@ export default function BinCalculator({
   };
 
   const calculateAggregatedTotals = () => {
-    let totalMonthly = 0;
-    let totalAnnual = 0;
-    let totalWeightKg = 0;
-    let totalRecycledKg = 0;
-    let totalCO2 = 0;
-
-    quoteStreams.forEach((s) => {
-      const res = calculatePricing(s);
-      totalMonthly += res.totalMonthlyCost;
-      totalAnnual += res.totalAnnualCost;
-      totalWeightKg += res.totalWeightKgPerMonth;
-      totalRecycledKg += res.recycledWeightKgPerMonth;
-      totalCO2 += res.co2SavedKgPerMonth;
-    });
-
-    const aggregateRecyclingRate = totalWeightKg > 0 ? (totalRecycledKg / totalWeightKg) * 100 : 0;
-
+    const agg = aggregateQuoteStreams(quoteStreams);
     return {
-      totalMonthly,
-      totalAnnual,
-      totalWeightKg,
-      totalRecycledKg,
-      totalCO2,
-      aggregateRecyclingRate
+      totalMonthly: agg.totalMonthlyCost,
+      totalAnnual: agg.totalAnnualCost,
+      totalWeightKg: agg.totalWeightKgPerMonth,
+      totalRecycledKg: agg.recycledWeightKgPerMonth,
+      totalCO2: agg.co2SavedKgPerMonth,
+      aggregateRecyclingRate: agg.recyclingRate * 100
     };
   };
 
@@ -649,6 +634,44 @@ export default function BinCalculator({
                       <span>Default Material standard: {(activeWaste.defaultRecyclingRate * 100).toFixed(0)}%</span>
                       <span>100% (Zero-Waste Circularity)</span>
                     </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="landfill_option_chk"
+                    checked={!!config.landfillOptionEnabled}
+                    onChange={(e) => updateVal('landfillOptionEnabled', e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500 h-4 w-4"
+                  />
+                  <label htmlFor="landfill_option_chk" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                    My provider doesn't divert 100% of non-recycled waste from landfill
+                  </label>
+                </div>
+
+                {config.landfillOptionEnabled && (
+                  <div className="space-y-1.5 pl-6">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-600">% of non-recycled waste sent to landfill</span>
+                      <span className="font-mono font-bold text-rose-600">{config.landfillRate ?? 0}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={config.landfillRate ?? 0}
+                      onChange={(e) => updateVal('landfillRate', parseInt(e.target.value))}
+                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                    />
+                    <div className="flex justify-between text-[8px] text-slate-400 font-mono">
+                      <span>0% (Full Energy Recovery)</span>
+                      <span>100% (All Landfill)</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 pt-1">
+                      Applies only to the portion that isn't recycled — check with your provider or waste transfer notes for a real figure.
+                    </p>
                   </div>
                 )}
               </motion.div>

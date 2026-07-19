@@ -568,6 +568,54 @@ export function calculatePricing(config: PricingConfig): CalculationResult {
   }
 }
 
+export interface AggregatedQuoteTotals {
+  totalMonthlyCost: number;
+  totalAnnualCost: number;
+  totalWeightKgPerMonth: number;
+  recycledWeightKgPerMonth: number;
+  recyclingRate: number; // fraction, 0-1
+  co2SavedKgPerMonth: number;
+  prnEstimate: number;
+  streamCount: number;
+}
+
+// Sums per-container results across a full multi-stream quote (e.g. a
+// Eurobin + a REL + a RoRo all together). This is the single source of
+// truth for "what does this whole quote actually cost/save" -- used by the
+// Calculator's live portfolio view, Saved Portfolio, and Compare Mode alike,
+// so all three always agree on the same numbers for the same quote.
+export function aggregateQuoteStreams(streams: PricingConfig[]): AggregatedQuoteTotals {
+  let totalMonthlyCost = 0;
+  let totalAnnualCost = 0;
+  let totalWeightKgPerMonth = 0;
+  let recycledWeightKgPerMonth = 0;
+  let co2SavedKgPerMonth = 0;
+  let prnEstimate = 0;
+
+  streams.forEach((s) => {
+    const res = calculatePricing(s);
+    totalMonthlyCost += res.totalMonthlyCost;
+    totalAnnualCost += res.totalAnnualCost;
+    totalWeightKgPerMonth += res.totalWeightKgPerMonth;
+    recycledWeightKgPerMonth += res.recycledWeightKgPerMonth;
+    co2SavedKgPerMonth += res.co2SavedKgPerMonth;
+    prnEstimate += res.prnEstimate;
+  });
+
+  const recyclingRate = totalWeightKgPerMonth > 0 ? recycledWeightKgPerMonth / totalWeightKgPerMonth : 0;
+
+  return {
+    totalMonthlyCost,
+    totalAnnualCost,
+    totalWeightKgPerMonth,
+    recycledWeightKgPerMonth,
+    recyclingRate,
+    co2SavedKgPerMonth,
+    prnEstimate,
+    streamCount: streams.length,
+  };
+}
+
 export function formatCurrency(value: number, currencyCode: 'GBP' | 'USD' | 'EUR' = 'GBP'): string {
   const symbols: Record<string, string> = {
     GBP: '£',

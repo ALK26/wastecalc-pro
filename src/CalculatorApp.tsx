@@ -143,6 +143,16 @@ export default function CalculatorApp() {
   // Trigger Instant PDF generation. Dynamically imported: jsPDF + html2canvas
   // are ~230KB combined and only needed once someone actually downloads a PDF.
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  // Loads a full multi-container quote (from Saved Portfolio or Compare
+  // Mode) back into the live Calculator -- sets the first container as the
+  // one being actively edited, and the rest as the "portfolio" streams.
+  const handleLoadStreams = (streams: PricingConfig[]) => {
+    if (streams.length === 0) return;
+    setQuoteStreams(streams);
+    setCalculatorConfig({ ...streams[0] });
+    setActiveTab('calculator');
+  };
+
   const handleDownloadPDF = async () => {
     setPdfGenerating(true);
     try {
@@ -324,10 +334,7 @@ export default function CalculatorApp() {
                   transition={{ duration: 0.2 }}
                 >
                   <UpgradeGate featureName="Compare Mode">
-                    <ComparisonMode onLoadConfig={(cfg) => {
-                      setCalculatorConfig(cfg);
-                      setActiveTab('calculator');
-                    }} />
+                    <ComparisonMode onLoadStreams={handleLoadStreams} />
                   </UpgradeGate>
                 </motion.div>
               )}
@@ -359,12 +366,8 @@ export default function CalculatorApp() {
                 >
                   <UpgradeGate featureName="Saved Portfolio">
                     <SavedQuotesTab
-                      currentConfig={calculatorConfig}
-                      currentResult={activeResult}
-                      onLoadConfig={(cfg) => {
-                        setCalculatorConfig(cfg);
-                        setActiveTab('calculator');
-                      }}
+                      currentStreams={quoteStreams.length > 0 ? quoteStreams : [calculatorConfig]}
+                      onLoadStreams={handleLoadStreams}
                       customerName={customerName}
                       companyName={companyName}
                       email={email}
@@ -404,10 +407,10 @@ export default function CalculatorApp() {
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-center sm:text-left">
                   <h4 className="font-display font-bold text-sm text-slate-800">
-                    Satisfied with the current configuration?
+                    Happy with this setup?
                   </h4>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Generate an instant commercial quote PDF or dispatch the details to our B2B pricing analysts.
+                    Download a PDF quote to keep, or generate a ready-to-send proposal email for your own team or decision-makers.
                   </p>
                 </div>
                 
@@ -454,3 +457,4 @@ export default function CalculatorApp() {
     </div>
   );
 }
+
