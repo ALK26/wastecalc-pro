@@ -21,7 +21,8 @@ import {
   Coins,
   Settings,
   Send,
-  Edit2
+  Edit2,
+  FilePlus
 } from 'lucide-react';
 import { 
   PricingConfig, 
@@ -45,6 +46,7 @@ interface BinCalculatorProps {
   onProceedToProposal?: () => void;
   quoteStreams?: PricingConfig[];
   onUpdateStreams?: (streams: PricingConfig[]) => void;
+  onNewQuote?: () => void;
 }
 
 export default function BinCalculator({ 
@@ -52,7 +54,8 @@ export default function BinCalculator({
   onChangeConfig,
   onProceedToProposal,
   quoteStreams = [],
-  onUpdateStreams
+  onUpdateStreams,
+  onNewQuote
 }: BinCalculatorProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -258,6 +261,20 @@ export default function BinCalculator({
             }`}>
               {quoteStreams.length} Waste Stream{quoteStreams.length !== 1 ? 's' : ''} Active
             </span>
+            {onNewQuote && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (quoteStreams.length === 0 || window.confirm('Start a new quote? This clears your current setup (make sure anything you want to keep is already saved to Saved Portfolio).')) {
+                    onNewQuote();
+                  }
+                }}
+                className="flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition cursor-pointer"
+              >
+                <FilePlus className="w-3 h-3" />
+                New Quote
+              </button>
+            )}
           </div>
         </div>
 

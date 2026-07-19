@@ -153,6 +153,16 @@ export default function CalculatorApp() {
     setActiveTab('calculator');
   };
 
+  // Resets to a blank quote -- clears both the live state and the persisted
+  // localStorage draft, so the old setup doesn't just reappear on refresh.
+  // Doesn't touch anything already saved to Saved Portfolio.
+  const handleNewQuote = () => {
+    setQuoteStreams([]);
+    setCalculatorConfig(DEFAULT_CALCULATOR_CONFIG);
+    localStorage.removeItem('wcp_draft_config');
+    localStorage.removeItem('wcp_draft_streams');
+  };
+
   const handleDownloadPDF = async () => {
     setPdfGenerating(true);
     try {
@@ -401,6 +411,7 @@ export default function CalculatorApp() {
                 onProceedToProposal={() => setActiveTab('lead')}
                 quoteStreams={quoteStreams}
                 onUpdateStreams={setQuoteStreams}
+                onNewQuote={handleNewQuote}
               />
 
               {/* Float-Style Procurement Quick Action Footer */}
