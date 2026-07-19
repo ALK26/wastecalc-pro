@@ -71,8 +71,12 @@ export default async (req: Request) => {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      customer_email: user.email,
+      // Anonymous trial users have no email on file -- omitting this lets
+      // Stripe's own Checkout page collect it directly at payment time,
+      // which is the one moment email actually needs to exist at all.
+      ...(user.email ? { customer_email: user.email } : {}),
       client_reference_id: user.id,
       subscription_data: {
         metadata: { supabase_user_id: user.id },
@@ -95,3 +99,4 @@ export default async (req: Request) => {
 export const config: Config = {
   path: "/api/create-checkout-session",
 };
+

@@ -69,7 +69,7 @@ export default function SavedQuotesTab({
   // By the time this component renders, UpgradeGate has already confirmed
   // the user is signed in and entitled -- no auth/profile UI lives here
   // anymore, just the actual saved-quotes feature.
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAnonymous } = useAuth();
 
   const [savedQuotes, setSavedQuotes] = useState<SavedQuoteRow[]>([]);
   const [quotesLoading, setQuotesLoading] = useState(true);
@@ -194,20 +194,22 @@ export default function SavedQuotesTab({
           <div className="flex justify-between items-center pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 font-bold">
-                {(user?.email || '?').charAt(0).toUpperCase()}
+                {isAnonymous ? '?' : (user?.email || '?').charAt(0).toUpperCase()}
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 leading-tight">{companyName || 'Your account'}</h3>
-                <p className="text-xs text-slate-400">{user?.email}</p>
+                <p className="text-xs text-slate-400">{isAnonymous ? 'Trial account (no email attached)' : user?.email}</p>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-[10px] font-bold rounded-lg transition text-slate-500 cursor-pointer flex items-center gap-1.5"
-            >
-              <LogOut className="w-3 h-3" />
-              Sign out
-            </button>
+            {!isAnonymous && (
+              <button
+                onClick={signOut}
+                className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-[10px] font-bold rounded-lg transition text-slate-500 cursor-pointer flex items-center gap-1.5"
+              >
+                <LogOut className="w-3 h-3" />
+                Sign out
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSaveQuote} className="bg-slate-50 p-4 rounded-xl border border-slate-200/50 flex flex-col sm:flex-row gap-3 items-end">
