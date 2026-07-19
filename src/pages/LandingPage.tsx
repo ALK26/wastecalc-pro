@@ -26,6 +26,9 @@ export default function LandingPage() {
             <span className="font-display font-bold text-slate-900">WasteCalc Pro</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link to="/contact" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition">
+              Contact
+            </Link>
             <Link to="/app" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition">
               Sign In
             </Link>
@@ -205,9 +208,11 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="text-center py-8 text-[10px] text-slate-400 font-mono space-y-1">
+      <footer className="text-center py-8 text-[10px] text-slate-400 font-mono space-y-2">
+        <Link to="/contact" className="block hover:text-slate-600 transition font-sans font-semibold text-xs">Contact Us</Link>
         <p>© {new Date().getFullYear()} WasteCalc Pro. All rights reserved.</p>
       </footer>
     </div>
   );
 }
+
