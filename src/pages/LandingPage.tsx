@@ -46,7 +46,7 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-4 pt-16 pb-14 text-center">
         <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-100 mb-6">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          14 days full access, free — no card required
+          7 days full access, free — no card required
         </div>
         <h1 className="text-4xl md:text-5xl font-black font-display text-slate-900 leading-tight tracking-tight mb-5">
           Compare commercial waste quotes<br className="hidden md:block" /> in minutes, not sales calls.
@@ -160,7 +160,7 @@ export default function LandingPage() {
               'Recycling rate and CO2 impact on every quote, ready for ESG reporting',
               'Compare two setups side by side before you commit to a contract',
               'Export a proper PDF quote in seconds',
-              '14 days of full access, free — no card required to start',
+              '7 days of full access, free — no card required to start',
               'Cancel monthly plans any time, no phone call needed',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-2.5">
@@ -174,7 +174,7 @@ export default function LandingPage() {
               to="/app"
               className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition"
             >
-              Try It Free For 14 Days
+              Try It Free For 7 Days
               <ArrowRight className="w-4 h-4 text-emerald-400" />
             </Link>
           </div>
@@ -195,7 +195,7 @@ export default function LandingPage() {
             Ready to see your real numbers?
           </h2>
           <p className="text-sm text-slate-400 mb-8">
-            14 days of full access. No card required. Cancel or downgrade any time.
+            7 days of full access. No card required. Cancel or downgrade any time.
           </p>
           <Link
             to="/app"

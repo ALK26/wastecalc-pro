@@ -6,12 +6,14 @@ import { useAuth } from '../hooks/useAuth';
 // Gates the entire calculator app -- unlike UpgradeGate (which checks Pro
 // entitlement for individual premium features), this only checks whether
 // someone is signed in at all. Anyone can sign up; signing up is what starts
-// the 14-day trial. This is the "wall" between the public marketing site
+// the trial. This is the "wall" between the public marketing site
 // and the actual product.
 //
-// Uses a 6-digit code typed on this same page rather than a magic-link
-// click -- same security (still proves email ownership), but no leaving
-// the tab or switching to an email app and back.
+// Uses a magic link for now (Supabase's default email template doesn't
+// expose a 6-digit code without custom SMTP, which needs a verified domain
+// -- see project notes). The code-entry step is still wired up and ready:
+// once custom SMTP is live and the template includes {{ .Token }}, this
+// becomes the low-friction primary path with the link as a fallback.
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading, signInWithEmail, verifyCode } = useAuth();
   const [email, setEmail] = useState('');
@@ -67,7 +69,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
           <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center font-bold text-emerald-400 font-display mx-auto mb-5">W</div>
           <h1 className="text-xl font-bold font-display text-slate-900 mb-1">Sign in to WasteCalc Pro</h1>
           <p className="text-xs text-slate-500 mb-6">
-            14 days of full Pro access, free — no card required.
+            7 days of full Pro access, free — no card required.
           </p>
 
           {step === 'email' ? (
@@ -90,39 +92,45 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
                 disabled={submitting}
                 className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
               >
-                {submitting ? 'Sending…' : 'Send my sign-in code'}
+                {submitting ? 'Sending…' : 'Send my sign-in link'}
               </button>
               <p className="text-[10px] text-slate-400 pt-1">
-                No password needed. We'll email you a 6-digit code.
+                No password needed. We'll email you a link to sign in instantly.
               </p>
             </form>
           ) : (
             <form onSubmit={handleVerifyCode} className="space-y-3">
               <p className="text-xs text-slate-500 -mt-2 mb-1">
-                Enter the code sent to <strong className="text-slate-700">{email}</strong>
+                We've sent a sign-in link to <strong className="text-slate-700">{email}</strong> from Supabase Auth.
+                Check spam if you don't see it — click the link to continue.
               </p>
-              <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  autoFocus
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="123456"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-9 text-lg tracking-[0.3em] font-mono text-center focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
-                  maxLength={6}
-                />
-              </div>
+              <details className="text-left">
+                <summary className="text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer font-semibold">
+                  Have a 6-digit code instead?
+                </summary>
+                <div className="relative mt-2">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="123456"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-9 text-lg tracking-[0.3em] font-mono text-center focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                    maxLength={6}
+                  />
+                </div>
+              </details>
               {authError && <p className="text-rose-600 text-[11px]">{authError}</p>}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
-              >
-                {submitting ? 'Verifying…' : 'Verify & Continue'}
-              </button>
+              {code && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
+                >
+                  {submitting ? 'Verifying…' : 'Verify & Continue'}
+                </button>
+              )}
               <div className="flex justify-between pt-1">
                 <button
                   type="button"

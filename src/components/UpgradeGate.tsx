@@ -63,7 +63,7 @@ export default function UpgradeGate({
         </div>
         <h3 className="text-lg font-bold font-display text-slate-900 mb-1">Sign in to unlock {featureName}</h3>
         <p className="text-xs text-slate-500 mb-6">
-          New accounts get full Pro access free for 14 days — no card required.
+          New accounts get full Pro access free for 7 days — no card required.
         </p>
 
         {step === 'email' ? (
@@ -85,36 +85,42 @@ export default function UpgradeGate({
               disabled={submitting}
               className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
             >
-              {submitting ? 'Sending…' : 'Send my sign-in code'}
+              {submitting ? 'Sending…' : 'Send my sign-in link'}
             </button>
           </form>
         ) : (
           <form onSubmit={handleVerifyCode} className="space-y-3">
             <p className="text-[11px] text-slate-500">
-              Enter the code sent to <strong className="text-slate-700">{email}</strong>
+              We've sent a sign-in link to <strong className="text-slate-700">{email}</strong> from Supabase Auth.
+              Check spam if you don't see it — click the link to continue.
             </p>
-            <div className="relative">
-              <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                inputMode="numeric"
-                required
-                autoFocus
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
-                maxLength={6}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-9 text-sm tracking-[0.3em] font-mono text-center focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
-              />
-            </div>
+            <details className="text-left">
+              <summary className="text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer font-semibold">
+                Have a 6-digit code instead?
+              </summary>
+              <div className="relative mt-2">
+                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  maxLength={6}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-9 text-sm tracking-[0.3em] font-mono text-center focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                />
+              </div>
+            </details>
             {authError && <p className="text-rose-600 text-[11px]">{authError}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
-            >
-              {submitting ? 'Verifying…' : 'Verify & Continue'}
-            </button>
+            {code && (
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
+              >
+                {submitting ? 'Verifying…' : 'Verify & Continue'}
+              </button>
+            )}
           </form>
         )}
       </div>

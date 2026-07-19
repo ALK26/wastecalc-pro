@@ -68,7 +68,7 @@ export default function PricingSection() {
             <div>
               <h3 className="text-lg font-bold font-display text-white">Plans &amp; Pricing</h3>
               <p className="text-xs text-slate-400">
-                Every new account starts with 14 days of full Pro access. No card required.
+                Every new account starts with 7 days of full Pro access. No card required.
               </p>
             </div>
           </div>
