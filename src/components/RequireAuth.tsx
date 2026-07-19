@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { Mail, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, KeyRound, Loader2, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-// This gates the entire calculator app -- unlike UpgradeGate (which checks
-// Pro entitlement for individual premium features), this only checks whether
+// Gates the entire calculator app -- unlike UpgradeGate (which checks Pro
+// entitlement for individual premium features), this only checks whether
 // someone is signed in at all. Anyone can sign up; signing up is what starts
-// the 14-day trial. This is the "wall" between the public marketing site and
-// the actual product.
+// the 14-day trial. This is the "wall" between the public marketing site
+// and the actual product.
+//
+// Uses a 6-digit code typed on this same page rather than a magic-link
+// click -- same security (still proves email ownership), but no leaving
+// the tab or switching to an email app and back.
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading, signInWithEmail } = useAuth();
+  const { user, loading, signInWithEmail, verifyCode } = useAuth();
   const [email, setEmail] = useState('');
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   if (loading) {
@@ -26,13 +32,27 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     if (!email) return;
+    setSubmitting(true);
     const { error } = await signInWithEmail(email);
+    setSubmitting(false);
     if (error) setAuthError(error);
-    else setMagicLinkSent(true);
+    else setStep('code');
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    if (!code) return;
+    setSubmitting(true);
+    const { error } = await verifyCode(email, code.trim());
+    setSubmitting(false);
+    if (error) setAuthError(error);
+    // On success, onAuthStateChange fires and this component re-renders
+    // with `user` set -- no manual redirect needed, we're already on /app.
   };
 
   return (
@@ -40,7 +60,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2 text-slate-400 hover:text-white text-xs font-semibold mb-8 transition">
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to wastecalcpro.co.uk
+          Back to WasteCalc Pro
         </Link>
 
         <div className="bg-white rounded-2xl p-8 shadow-2xl text-center">
@@ -50,13 +70,8 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
             14 days of full Pro access, free — no card required.
           </p>
 
-          {magicLinkSent ? (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs flex items-center gap-2 justify-center">
-              <CheckCircle className="w-4 h-4 flex-shrink-0" />
-              Check your inbox — click the link we sent to {email} to sign in.
-            </div>
-          ) : (
-            <form onSubmit={handleSignIn} className="space-y-3">
+          {step === 'email' ? (
+            <form onSubmit={handleSendCode} className="space-y-3">
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
                 <input
@@ -72,16 +87,60 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
               {authError && <p className="text-rose-600 text-[11px]">{authError}</p>}
               <button
                 type="submit"
-                className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer"
+                disabled={submitting}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
               >
-                Send magic link
+                {submitting ? 'Sending…' : 'Send my sign-in code'}
               </button>
+              <p className="text-[10px] text-slate-400 pt-1">
+                No password needed. We'll email you a 6-digit code.
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-3">
+              <p className="text-xs text-slate-500 -mt-2 mb-1">
+                Enter the code sent to <strong className="text-slate-700">{email}</strong>
+              </p>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-9 text-lg tracking-[0.3em] font-mono text-center focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                  maxLength={6}
+                />
+              </div>
+              {authError && <p className="text-rose-600 text-[11px]">{authError}</p>}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
+              >
+                {submitting ? 'Verifying…' : 'Verify & Continue'}
+              </button>
+              <div className="flex justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setStep('email'); setCode(''); setAuthError(null); }}
+                  className="text-[11px] text-slate-400 hover:text-slate-700 font-semibold cursor-pointer"
+                >
+                  Use a different email
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  className="text-[11px] text-slate-400 hover:text-slate-700 font-semibold cursor-pointer"
+                >
+                  Resend code
+                </button>
+              </div>
             </form>
           )}
-
-          <p className="text-[10px] text-slate-400 mt-6">
-            No password needed. We'll email you a one-click sign-in link.
-          </p>
         </div>
       </div>
     </div>

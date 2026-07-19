@@ -8,7 +8,6 @@ import {
   Leaf,
   FileDown,
   CheckCircle2,
-  Star,
   Loader2,
 } from 'lucide-react';
 
@@ -142,22 +141,39 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials placeholder — swap these for real customer quotes once you have them */}
+      {/* Benefits + CTA — no fabricated testimonials; swap this whole section
+          for real customer quotes once they exist */}
       <section className="bg-slate-50 border-y border-slate-100 py-16">
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-2xl font-bold font-display text-slate-900 text-center mb-10">What customers say</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl border border-dashed border-slate-300">
-                <div className="flex gap-0.5 mb-3">
-                  {[...Array(5)].map((_, s) => <Star key={s} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />)}
-                </div>
-                <p className="text-xs text-slate-400 italic mb-4">
-                  Testimonial placeholder — replace with a real customer quote once you have one.
-                </p>
-                <p className="text-[11px] font-bold text-slate-300">Name, Job Title — Company</p>
+        <div className="max-w-4xl mx-auto px-4">
+          <h2 className="text-2xl font-bold font-display text-slate-900 text-center mb-2">
+            Why procurement teams choose WasteCalc Pro
+          </h2>
+          <p className="text-sm text-slate-500 text-center mb-10">
+            No sales calls, no waiting for a quote back — just the real numbers.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+            {[
+              'See real pricing instantly — no demo booking required',
+              'Recycling rate and CO2 impact on every quote, ready for ESG reporting',
+              'Compare two setups side by side before you commit to a contract',
+              'Export a proper PDF quote in seconds',
+              '14 days of full access, free — no card required to start',
+              'Cancel monthly plans any time, no phone call needed',
+            ].map((benefit) => (
+              <div key={benefit} className="flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-slate-600">{benefit}</span>
               </div>
             ))}
+          </div>
+          <div className="text-center">
+            <Link
+              to="/app"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition"
+            >
+              Try It Free For 14 Days
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+            </Link>
           </div>
         </div>
       </section>

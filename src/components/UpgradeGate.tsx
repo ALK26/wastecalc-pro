@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, Loader2, CheckCircle, Sparkles } from 'lucide-react';
+import { Lock, Mail, KeyRound, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useCheckout, PRICE_IDS } from '../hooks/useCheckout';
@@ -11,12 +11,14 @@ export default function UpgradeGate({
   featureName: string;
   children: React.ReactNode;
 }) {
-  const { user, loading: authLoading, signInWithEmail } = useAuth();
+  const { user, loading: authLoading, signInWithEmail, verifyCode } = useAuth();
   const { hasProAccess, loading: entitlementLoading } = useEntitlement();
   const { startCheckout, starting, error: checkoutError } = useCheckout();
 
   const [email, setEmail] = useState('');
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   if (authLoading || (user && entitlementLoading)) {
@@ -32,13 +34,25 @@ export default function UpgradeGate({
     return <>{children}</>;
   }
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     if (!email) return;
+    setSubmitting(true);
     const { error } = await signInWithEmail(email);
+    setSubmitting(false);
     if (error) setAuthError(error);
-    else setMagicLinkSent(true);
+    else setStep('code');
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    if (!code) return;
+    setSubmitting(true);
+    const { error } = await verifyCode(email, code.trim());
+    setSubmitting(false);
+    if (error) setAuthError(error);
   };
 
   if (!user) {
@@ -52,13 +66,8 @@ export default function UpgradeGate({
           New accounts get full Pro access free for 14 days — no card required.
         </p>
 
-        {magicLinkSent ? (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs flex items-center gap-2 justify-center">
-            <CheckCircle className="w-4 h-4 flex-shrink-0" />
-            Check your inbox — click the link we sent to {email} to sign in.
-          </div>
-        ) : (
-          <form onSubmit={handleSignIn} className="space-y-3">
+        {step === 'email' ? (
+          <form onSubmit={handleSendCode} className="space-y-3">
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
@@ -73,9 +82,38 @@ export default function UpgradeGate({
             {authError && <p className="text-rose-600 text-[11px]">{authError}</p>}
             <button
               type="submit"
-              className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
+              disabled={submitting}
+              className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
             >
-              Send magic link
+              {submitting ? 'Sending…' : 'Send my sign-in code'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyCode} className="space-y-3">
+            <p className="text-[11px] text-slate-500">
+              Enter the code sent to <strong className="text-slate-700">{email}</strong>
+            </p>
+            <div className="relative">
+              <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                inputMode="numeric"
+                required
+                autoFocus
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456"
+                maxLength={6}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-9 text-sm tracking-[0.3em] font-mono text-center focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+              />
+            </div>
+            {authError && <p className="text-rose-600 text-[11px]">{authError}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
+            >
+              {submitting ? 'Verifying…' : 'Verify & Continue'}
             </button>
           </form>
         )}

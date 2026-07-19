@@ -7,6 +7,7 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   signInWithEmail: (email: string) => Promise<{ error: string | null }>;
+  verifyCode: (email: string, code: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -29,15 +30,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Passwordless magic-link sign in. No passwords for us to store or leak --
-  // Supabase emails a one-time link, clicking it completes the session.
-  // Redirects to /app (not the marketing homepage) so someone who just
-  // signed in lands straight back where they were trying to go.
+  // Passwordless sign in: sends a one-time 6-digit code (and, if the email
+  // template also includes the link, a clickable link too -- either works).
+  // We only use the code path in the UI, which keeps someone on the same tab
+  // the whole time instead of round-tripping through their email client.
   const signInWithEmail = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/app` },
+      options: { shouldCreateUser: true },
     });
+    return { error: error?.message ?? null };
+  };
+
+  const verifyCode = async (email: string, code: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
     return { error: error?.message ?? null };
   };
 
@@ -47,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signInWithEmail, signOut }}
+      value={{ user: session?.user ?? null, session, loading, signInWithEmail, verifyCode, signOut }}
     >
       {children}
     </AuthContext.Provider>
