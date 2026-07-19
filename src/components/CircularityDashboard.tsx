@@ -26,7 +26,9 @@ import {
   Percent, 
   CheckCircle,
   TrendingUp,
-  Scale
+  Scale,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { PricingConfig, CalculationResult, WASTE_TYPES, formatCurrency } from '../types';
 
@@ -39,6 +41,22 @@ interface CircularityDashboardProps {
 export default function CircularityDashboard({ config, result, onChangeConfig }: CircularityDashboardProps) {
   const [activeTab, setActiveTab] = useState<'material' | 'prn' | 'diversion'>('material');
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+
+  const handleDownloadESGReport = async () => {
+    setPdfGenerating(true);
+    try {
+      const { generateESGReportPDF } = await import('./PdfGenerator');
+      generateESGReportPDF({
+        customerName: 'Procurement Team',
+        companyName: '',
+        config,
+        result,
+      });
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
 
   const activeWaste = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
   
@@ -123,19 +141,43 @@ export default function CircularityDashboard({ config, result, onChangeConfig }:
           </span>
           <div>
             <h3 className="text-sm font-bold font-display text-slate-900">Industrial Circularity & ESG Analytics</h3>
-            <p className="text-xs text-slate-400">Packaging Recovery Notes, landfill diversion rates, and carbon offset reporting</p>
+            <p className="text-xs text-slate-400">Estimated packaging recovery, landfill diversion, and carbon offset figures</p>
           </div>
         </div>
 
-        {/* ESG Audit Status Badge */}
-        <div className={`flex items-center gap-1.5 px-3 py-1 border rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider ${
-          landfillEnabled 
-            ? 'bg-rose-50 border-rose-100 text-rose-700' 
-            : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-        }`}>
-          <CheckCircle className={`w-3.5 h-3.5 ${landfillEnabled ? 'text-rose-500' : 'text-emerald-500'}`} />
-          <span>{landfillEnabled ? `Landfill Active (${landfillRate}%)` : '100% Diversion Verified'}</span>
+        <div className="flex items-center gap-2">
+          {/* ESG Status Badge -- "Estimated", not "Verified": nothing here is audited */}
+          <div className={`flex items-center gap-1.5 px-3 py-1 border rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider ${
+            landfillEnabled 
+              ? 'bg-rose-50 border-rose-100 text-rose-700' 
+              : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+          }`}>
+            <CheckCircle className={`w-3.5 h-3.5 ${landfillEnabled ? 'text-rose-500' : 'text-emerald-500'}`} />
+            <span>{landfillEnabled ? `Landfill Active (${landfillRate}%)` : '100% Diversion (Estimated)'}</span>
+          </div>
+
+          <button
+            onClick={handleDownloadESGReport}
+            disabled={pdfGenerating}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition cursor-pointer disabled:opacity-60"
+          >
+            {pdfGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-400" />}
+            {pdfGenerating ? 'Preparing…' : 'Download ESG Report'}
+          </button>
         </div>
+      </div>
+
+      {/* Honesty banner -- this is estimated, not audited or certified data */}
+      <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
+        <Info className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-[10.5px] text-amber-800 leading-relaxed">
+          These figures are <strong>estimates</strong> based on standard industry assumptions per material type — not measured or audited data.
+          Recycling rate: <strong>{(config.customRecyclingRateEnabled ? config.customRecyclingRate : activeWaste.defaultRecyclingRate * 100).toFixed(0)}%</strong>
+          {config.customRecyclingRateEnabled ? ' (your override)' : ' (default assumption'}
+          {!config.customRecyclingRateEnabled && ' — adjustable in the calculator)'}.
+          {' '}CO2 factor: <strong>{activeWaste.carbonSavingFactor} kg/kg</strong>. PRN factor: <strong>£{activeWaste.prnFactor.toFixed(2)}/kg</strong>.
+          {' '}For formal ESG/SECR reporting, verify against your actual waste transfer records.
+        </p>
       </div>
 
       {/* Industrial Tab Control System */}
@@ -526,7 +568,7 @@ export default function CircularityDashboard({ config, result, onChangeConfig }:
                     : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                 }`}>
                   <CheckCircle className={`w-4 h-4 ${landfillWeightKg > 0 ? 'text-amber-500' : 'text-emerald-500'}`} />
-                  <span>{landfillWeightKg > 0 ? 'Audited Landfill Diversion' : 'Verified Landfill-Free Stream'}</span>
+                  <span>{landfillWeightKg > 0 ? 'Estimated Landfill Diversion' : 'Estimated Landfill-Free Stream'}</span>
                 </div>
               </div>
 
@@ -536,8 +578,8 @@ export default function CircularityDashboard({ config, result, onChangeConfig }:
 
               <p className="text-[10px] text-slate-400 leading-relaxed">
                 {landfillWeightKg > 0 
-                  ? `An audited landfill diversion rate is registered. Approximately ${((totalMonthlyWeightKg - landfillWeightKg) / totalMonthlyWeightKg * 100).toFixed(1)}% of managed waste is recovered or recycled, with the remainder sent to verified landfill disposal.`
-                  : 'A 100% Landfill Diversion index is guaranteed. The active material stream bypasses landfill disposal by being channeled directly to advanced circular reprocessing and thermal energy recovery systems.'}
+                  ? `Based on your inputs, an estimated ${((totalMonthlyWeightKg - landfillWeightKg) / totalMonthlyWeightKg * 100).toFixed(1)}% of managed waste is recovered or recycled, with the remainder estimated to go to landfill disposal. Not measured or audited data.`
+                  : 'Based on your inputs, none of the residual (non-recycled) waste is assigned to landfill -- it\'s estimated as fully diverted to recovery/energy pathways. This is an assumption you can adjust, not a guarantee -- check the landfill diversion toggle in Advanced Settings if your actual provider sends some waste to landfill.'}
               </p>
             </div>
           </div>

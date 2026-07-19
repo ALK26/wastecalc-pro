@@ -34,6 +34,7 @@ import BinCalculator from './components/BinCalculator';
 import UpgradeGate from './components/UpgradeGate';
 import { useAuth } from './hooks/useAuth';
 import { useEntitlement } from './hooks/useEntitlement';
+import { supabase } from './lib/supabaseClient';
 const ComparisonMode = lazy(() => import('./components/ComparisonMode'));
 const LeadForm = lazy(() => import('./components/LeadForm'));
 const SavedQuotesTab = lazy(() => import('./components/SavedQuotesTab'));
@@ -151,6 +152,37 @@ export default function CalculatorApp() {
     setQuoteStreams(streams);
     setCalculatorConfig({ ...streams[0] });
     setActiveTab('calculator');
+  };
+
+  // Quick-save directly from the Calculator tab -- no need to switch to
+  // Saved Portfolio first. Same entitlement rules apply (Pro feature): if
+  // not signed in or not entitled, this routes to the Saved tab instead,
+  // which shows the proper sign-in/upgrade screen via UpgradeGate.
+  const [quickSaving, setQuickSaving] = useState(false);
+  const handleQuickSave = async () => {
+    if (!hasProAccess) {
+      setActiveTab('saved');
+      return;
+    }
+    const title = window.prompt('Name this quote (e.g. "London Site - Full Setup"):');
+    if (!title || !title.trim()) return;
+
+    const streamsToSave = quoteStreams.length > 0 ? quoteStreams : [calculatorConfig];
+    setQuickSaving(true);
+    const { error } = await supabase.from('saved_quotes').insert({
+      owner_id: user!.id,
+      title: title.trim(),
+      streams: streamsToSave,
+      customer_name: customerName || null,
+      company_name: companyName || null,
+    });
+    setQuickSaving(false);
+
+    if (error) {
+      alert('Failed to save this quote. Please try again.');
+    } else {
+      alert(`Quote "${title.trim()}" saved to your account.`);
+    }
   };
 
   // Resets to a blank quote -- clears both the live state and the persisted
@@ -412,6 +444,8 @@ export default function CalculatorApp() {
                 quoteStreams={quoteStreams}
                 onUpdateStreams={setQuoteStreams}
                 onNewQuote={handleNewQuote}
+                onQuickSave={handleQuickSave}
+                quickSaving={quickSaving}
               />
 
               {/* Float-Style Procurement Quick Action Footer */}
