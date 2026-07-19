@@ -13,7 +13,7 @@ import {
 
 import ProductTourCarousel from '../components/ProductTourCarousel';
 
-const PricingSection = lazy(() => import('../components/PricingSection (2)'));
+const PricingSection = lazy(() => import('../components/PricingSection'));
 
 export default function LandingPage() {
   return (
@@ -211,4 +211,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
