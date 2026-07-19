@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Check, Sparkles, Building2, Zap, AlertTriangle } from 'lucide-react';
 import { useCheckout, PRICE_IDS } from '../hooks/useCheckout';
 import { useCancelSubscription } from '../hooks/useCancelSubscription';
@@ -173,7 +174,7 @@ export default function PricingSection() {
           <div className="flex items-center gap-2 mb-1">
             <h4 className="text-sm font-bold uppercase font-display text-slate-900">Free</h4>
           </div>
-          <p className="text-[11px] text-slate-400 mb-4">Try the calculator, no account needed</p>
+          <p className="text-[11px] text-slate-400 mb-4">Calculator access, always free after your trial</p>
           <p className="text-3xl font-black text-slate-900 mb-1">£0</p>
           <p className="text-[10px] text-slate-400 font-mono uppercase mb-6">Forever</p>
 
@@ -192,9 +193,18 @@ export default function PricingSection() {
             </li>
           </ul>
 
-          <div className="py-2.5 text-center text-xs font-bold text-slate-400 border border-slate-200 rounded-xl">
-            {user ? 'Your current plan' : 'No sign-up required'}
-          </div>
+          {user ? (
+            <div className="py-2.5 text-center text-xs font-bold text-slate-400 border border-slate-200 rounded-xl">
+              Your current plan
+            </div>
+          ) : (
+            <Link
+              to="/app"
+              className="block py-2.5 text-center text-xs font-bold text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl transition"
+            >
+              Sign in to get started
+            </Link>
+          )}
         </div>
 
         {/* PRO */}
@@ -303,4 +313,3 @@ export default function PricingSection() {
     </div>
   );
 }
-

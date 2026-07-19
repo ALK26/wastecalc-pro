@@ -37,7 +37,7 @@ import { useEntitlement } from './hooks/useEntitlement';
 const ComparisonMode = lazy(() => import('./components/ComparisonMode'));
 const LeadForm = lazy(() => import('./components/LeadForm'));
 const SavedQuotesTab = lazy(() => import('./components/SavedQuotesTab'));
-const PricingSection = lazy(() => import('./components/PricingSection'));
+const PricingSection = lazy(() => import('./components/PricingSection (2)'));
 
 function TabLoadingFallback() {
   return (
