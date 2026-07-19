@@ -31,10 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Passwordless magic-link sign in. No passwords for us to store or leak --
   // Supabase emails a one-time link, clicking it completes the session.
+  // Redirects to /app (not the marketing homepage) so someone who just
+  // signed in lands straight back where they were trying to go.
   const signInWithEmail = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: `${window.location.origin}/app` },
     });
     return { error: error?.message ?? null };
   };

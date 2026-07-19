@@ -6,3 +6,12 @@
 [functions]
   node_bundler = "esbuild"
 
+# SPA fallback: client-side routes (like /app) need to resolve to index.html
+# so React Router can take over, not 404 on direct load/refresh. This does
+# NOT affect the /api/* serverless functions -- those have their own explicit
+# path config and are matched before this catch-all.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
