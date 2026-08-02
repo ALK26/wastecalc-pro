@@ -49,11 +49,11 @@ export default function LandingPage() {
           7 days full access, free — no card required
         </div>
         <h1 className="text-4xl md:text-5xl font-black font-display text-slate-900 leading-tight tracking-tight mb-5">
-          Compare commercial waste quotes<br className="hidden md:block" /> in minutes, not sales calls.
+          Model commercial waste costs<br className="hidden md:block" /> from your own quotes and rates.
         </h1>
         <p className="text-base md:text-lg text-slate-500 max-w-2xl mx-auto mb-8">
-          Real cost breakdowns for Eurobins, REL/FEL, and Skip/RoRo containers — with recycling rate and CO2 impact built in.
-          No demo booking, no waiting for a quote back. See the numbers yourself, right now.
+          Enter a quote you've received, your current contract rates, or a target budget for Eurobins, REL/FEL, or Skip/RoRo containers —
+          get a full itemized cost breakdown with recycling rate and CO2 impact, instantly.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
@@ -91,10 +91,10 @@ export default function LandingPage() {
               <div className="w-9 h-9 bg-slate-900 text-emerald-400 rounded-lg flex items-center justify-center font-bold font-display text-sm mb-4">1</div>
               <h3 className="font-bold text-slate-900 mb-1.5 flex items-center gap-2">
                 <Calculator className="w-4 h-4 text-emerald-500" />
-                Enter your setup
+                Enter your figures
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Container type, size, quantity, collection frequency — whatever you're currently paying for, or considering.
+                Container type, size, quantity, collection frequency, and the rates from a quote you've received or your current contract.
               </p>
             </div>
 
@@ -102,10 +102,10 @@ export default function LandingPage() {
               <div className="w-9 h-9 bg-slate-900 text-emerald-400 rounded-lg flex items-center justify-center font-bold font-display text-sm mb-4">2</div>
               <h3 className="font-bold text-slate-900 mb-1.5 flex items-center gap-2">
                 <Leaf className="w-4 h-4 text-emerald-500" />
-                See real numbers instantly
+                Get the full breakdown instantly
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Full monthly and annual cost breakdown, plus recycling rate and estimated CO2 saved — for ESG reporting.
+                Full monthly and annual cost breakdown calculated from what you entered, plus recycling rate and estimated CO2 saved — for ESG reporting.
               </p>
             </div>
 
@@ -152,12 +152,12 @@ export default function LandingPage() {
             Why procurement teams choose WasteCalc Pro
           </h2>
           <p className="text-sm text-slate-500 text-center mb-10">
-            No sales calls, no waiting for a quote back — just the real numbers.
+            Enter your own quotes or rates — no sales calls, no waiting on a provider to get back to you.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
             {[
-              'See real pricing instantly — no demo booking required',
-              'Recycling rate and CO2 impact on every quote, ready for ESG reporting',
+              'Enter a quote, rate, or budget target and get a full breakdown instantly',
+              'Recycling rate and CO2 impact on every calculation, ready for ESG reporting',
               'Compare two setups side by side before you commit to a contract',
               'Export a proper PDF quote in seconds',
               '7 days of full access, free — no card required to start',
@@ -192,7 +192,7 @@ export default function LandingPage() {
       <section className="bg-slate-900 py-16">
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold font-display text-white mb-3">
-            Ready to see your real numbers?
+            Ready to model your own numbers?
           </h2>
           <p className="text-sm text-slate-400 mb-8">
             7 days of full access. No card required. Cancel or downgrade any time.
@@ -215,4 +215,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
