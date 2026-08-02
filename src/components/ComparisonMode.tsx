@@ -14,6 +14,10 @@ import {
   Leaf,
   Loader2,
   FolderOpen,
+  Settings2,
+  ChevronDown,
+  ChevronUp,
+  FileDown,
 } from 'lucide-react';
 import {
   PricingConfig,
@@ -22,6 +26,7 @@ import {
   formatCurrency,
 } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../hooks/useAuth';
 
 interface SavedQuoteRow {
   id: string;
@@ -35,11 +40,27 @@ interface ComparisonModeProps {
   onLoadStreams?: (streams: PricingConfig[]) => void;
 }
 
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
 export default function ComparisonMode({ onLoadConfig, onLoadStreams }: ComparisonModeProps) {
+  const { user } = useAuth();
   const [savedQuotes, setSavedQuotes] = useState<SavedQuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [quoteAId, setQuoteAId] = useState<string>('');
   const [quoteBId, setQuoteBId] = useState<string>('');
+  const [downloadingSide, setDownloadingSide] = useState<'A' | 'B' | null>(null);
+
+  // PDF document customization -- same white-label options as elsewhere in
+  // the app. Applies to whichever card's "Download PDF" you click.
+  const [brandName, setBrandName] = useState('');
+  const [overrideSite, setOverrideSite] = useState('');
+  const [overrideCompany, setOverrideCompany] = useState('');
+  const [overrideEmail, setOverrideEmail] = useState('');
+  const [startDate, setStartDate] = useState(todayISO());
+  const [validityMonths, setValidityMonths] = useState(12);
+  const [showDocOptions, setShowDocOptions] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -58,6 +79,39 @@ export default function ComparisonMode({ onLoadConfig, onLoadStreams }: Comparis
 
   const quoteA = savedQuotes.find((q) => q.id === quoteAId);
   const quoteB = savedQuotes.find((q) => q.id === quoteBId);
+
+  const handleDownloadPDF = async (
+    side: 'A' | 'B',
+    quote: SavedQuoteRow,
+    agg: ReturnType<typeof aggregateQuoteStreams>
+  ) => {
+    setDownloadingSide(side);
+    try {
+      const { generateQuotePDF } = await import('./PdfGenerator');
+      const primary = quote.streams[0];
+      generateQuotePDF({
+        customerName: overrideSite || quote.title || 'Site A',
+        companyName: overrideCompany || 'Valued Procurement Client',
+        email: overrideEmail || user?.email || '',
+        config: primary,
+        result: {
+          totalMonthlyCost: agg.totalMonthlyCost,
+          totalAnnualCost: agg.totalAnnualCost,
+          totalWeightKgPerMonth: agg.totalWeightKgPerMonth,
+          recycledWeightKgPerMonth: agg.recycledWeightKgPerMonth,
+          recyclingRate: agg.recyclingRate,
+          co2SavedKgPerMonth: agg.co2SavedKgPerMonth,
+          prnEstimate: agg.prnEstimate,
+        } as any,
+        streams: quote.streams,
+        brandName: brandName || undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        validityMonths,
+      });
+    } finally {
+      setDownloadingSide(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -160,18 +214,32 @@ export default function ComparisonMode({ onLoadConfig, onLoadStreams }: Comparis
           </div>
         </div>
 
-        {(onLoadStreams || onLoadConfig) && (
+        <div className="flex gap-2">
+          {(onLoadStreams || onLoadConfig) && (
+            <button
+              onClick={() => {
+                if (onLoadStreams) onLoadStreams(quote.streams);
+                else if (onLoadConfig && quote.streams[0]) onLoadConfig(quote.streams[0]);
+              }}
+              className="flex-1 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex justify-center items-center gap-1"
+            >
+              Load into Calculator
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
           <button
-            onClick={() => {
-              if (onLoadStreams) onLoadStreams(quote.streams);
-              else if (onLoadConfig && quote.streams[0]) onLoadConfig(quote.streams[0]);
-            }}
-            className="w-full py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex justify-center items-center gap-1"
+            onClick={() => handleDownloadPDF(label, quote, agg)}
+            disabled={downloadingSide === label}
+            className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer flex justify-center items-center gap-1 disabled:opacity-60"
           >
-            Load into Calculator
-            <ChevronRight className="w-4 h-4" />
+            {downloadingSide === label ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            {downloadingSide === label ? 'Preparing…' : 'Download PDF'}
           </button>
-        )}
+        </div>
       </div>
     );
   };
@@ -205,6 +273,87 @@ export default function ComparisonMode({ onLoadConfig, onLoadStreams }: Comparis
             </div>
           )}
         </div>
+      </div>
+
+      {/* PDF document customization -- applies to either card's download */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowDocOptions((v) => !v)}
+          className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+          Customize PDF document details
+          {showDocOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+
+        {showDocOptions && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">
+                Your Company Name (replaces "WasteCalc Pro")
+              </label>
+              <input
+                type="text"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                placeholder="WasteCalc Pro"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Site (override)</label>
+              <input
+                type="text"
+                value={overrideSite}
+                onChange={(e) => setOverrideSite(e.target.value)}
+                placeholder="Leave blank to use quote title"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Company (override)</label>
+              <input
+                type="text"
+                value={overrideCompany}
+                onChange={(e) => setOverrideCompany(e.target.value)}
+                placeholder="Your company"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email (override)</label>
+              <input
+                type="email"
+                value={overrideEmail}
+                onChange={(e) => setOverrideEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Validity Period</label>
+              <select
+                value={validityMonths}
+                onChange={(e) => setValidityMonths(parseInt(e.target.value))}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none cursor-pointer"
+              >
+                <option value={12}>12 months</option>
+                <option value={24}>24 months</option>
+                <option value={36}>36 months</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -251,4 +400,3 @@ export default function ComparisonMode({ onLoadConfig, onLoadStreams }: Comparis
     </div>
   );
 }
-

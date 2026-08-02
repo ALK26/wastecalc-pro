@@ -130,7 +130,7 @@ export default function LeadForm({
     try {
       const { generateQuotePDF } = await import('./PdfGenerator');
       generateQuotePDF({
-        customerName: customerNameVal || 'Commercial Operations Manager',
+        customerName: customerNameVal || 'Site A',
         companyName: companyNameVal || 'Valued Procurement Client',
         email: emailVal,
         config,
@@ -154,10 +154,10 @@ export default function LeadForm({
         <div>
           <h2 className="font-display font-semibold text-base flex items-center gap-2">
             <Mail className="w-5 h-5 text-emerald-400" />
-            AI-Drafted Commercial Proposal
+            AI-Drafted Quote Summary
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Generates a ready-to-send proposal — copy the text and attach your PDF quote to send yourself.
+            Generates a summary you can send to your manager, finance team, or anyone else who needs the numbers.
           </p>
         </div>
         <span className="hidden sm:inline-flex text-xs items-center gap-1 bg-emerald-600/30 text-emerald-400 px-2.5 py-1 rounded font-mono font-semibold border border-emerald-500/20">
@@ -219,11 +219,11 @@ export default function LeadForm({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating B2B Custom Pitch...
+                    Preparing Your Quote Summary...
                   </>
                 ) : (
                   <>
-                    Email Proposal Quote
+                    Generate Quote Summary
                     <ArrowRight className="w-4 h-4 text-emerald-400" />
                   </>
                 )}
@@ -278,9 +278,9 @@ export default function LeadForm({
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white shadow-md">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="font-display font-bold text-lg text-slate-900">Proposal Drafted</h3>
+            <h3 className="font-display font-bold text-lg text-slate-900">Quote Summary Drafted</h3>
             <p className="text-xs text-gray-500">
-              Copy the text below, then download your PDF quote to attach — send both from your own email.
+              Edit the draft below if you want to tweak it, then copy it or download your PDF quote to attach.
             </p>
             {emailSent && (
               <p className="text-[11px] text-emerald-600 font-semibold pt-1">
@@ -308,12 +308,20 @@ export default function LeadForm({
           </div>
 
           <div className="max-w-2xl mx-auto bg-slate-50 border border-slate-200 rounded-xl p-5 text-left">
-            <div className="text-[10px] uppercase font-bold text-slate-400 font-mono tracking-wider border-b border-slate-200 pb-2 mb-3">
-              Generated consultative sales email
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+              <span className="text-[10px] uppercase font-bold text-slate-400 font-mono tracking-wider">
+                Your quote summary, ready to send
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                <Edit2 className="w-3 h-3" /> Editable
+              </span>
             </div>
-            <pre className="text-xs text-slate-700 font-mono whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
-              {draftEmail}
-            </pre>
+            <textarea
+              value={draftEmail}
+              onChange={(e) => setDraftEmail(e.target.value)}
+              rows={12}
+              className="w-full text-xs text-slate-700 font-mono whitespace-pre-wrap leading-relaxed bg-white border border-slate-200 rounded-lg p-3 outline-none focus:border-emerald-500 resize-y"
+            />
           </div>
 
           <div className="pt-2">
@@ -321,7 +329,7 @@ export default function LeadForm({
               onClick={() => setSuccess(false)}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow cursor-pointer"
             >
-              Draft Another Proposal
+              Draft Another Summary
             </button>
           </div>
         </div>
@@ -329,4 +337,3 @@ export default function LeadForm({
     </div>
   );
 }
-

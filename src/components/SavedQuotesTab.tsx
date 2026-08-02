@@ -14,7 +14,11 @@ import {
   CheckCircle,
   AlertCircle,
   FileDown,
-  LogOut
+  LogOut,
+  Settings2,
+  ChevronDown,
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 import {
   PricingConfig,
@@ -35,7 +39,6 @@ import {
   Legend,
   CartesianGrid
 } from 'recharts';
-import { generateQuotePDF } from './PdfGenerator';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 
@@ -60,6 +63,10 @@ interface SavedQuotesTabProps {
   email: string;
 }
 
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
 export default function SavedQuotesTab({
   currentStreams,
   onLoadStreams,
@@ -76,6 +83,19 @@ export default function SavedQuotesTab({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [saveTitle, setSaveTitle] = useState('');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // PDF document customization -- same white-label options as the Calculator
+  // tab. Site/Company/Email here act as an OVERRIDE: leave blank to use
+  // whatever was stored on each quote when it was saved, or fill in to apply
+  // the same values across whichever quote you download.
+  const [brandName, setBrandName] = useState('');
+  const [overrideSite, setOverrideSite] = useState('');
+  const [overrideCompany, setOverrideCompany] = useState('');
+  const [overrideEmail, setOverrideEmail] = useState('');
+  const [startDate, setStartDate] = useState(todayISO());
+  const [validityMonths, setValidityMonths] = useState(12);
+  const [showDocOptions, setShowDocOptions] = useState(false);
 
   const loadQuotes = async () => {
     setQuotesLoading(true);
@@ -139,26 +159,35 @@ export default function SavedQuotesTab({
     loadQuotes();
   };
 
-  const handleDownloadSavedQuotePDF = (quote: SavedQuoteRow, event: React.MouseEvent) => {
+  const handleDownloadSavedQuotePDF = async (quote: SavedQuoteRow, event: React.MouseEvent) => {
     event.stopPropagation();
-    const agg = aggregateQuoteStreams(quote.streams);
-    const primary = quote.streams[0];
-    generateQuotePDF({
-      customerName: quote.customer_name || 'Commercial Operations Manager',
-      companyName: quote.company_name || 'Valued Procurement Client',
-      email: user?.email || '',
-      config: primary,
-      result: {
-        totalMonthlyCost: agg.totalMonthlyCost,
-        totalAnnualCost: agg.totalAnnualCost,
-        totalWeightKgPerMonth: agg.totalWeightKgPerMonth,
-        recycledWeightKgPerMonth: agg.recycledWeightKgPerMonth,
-        recyclingRate: agg.recyclingRate,
-        co2SavedKgPerMonth: agg.co2SavedKgPerMonth,
-        prnEstimate: agg.prnEstimate,
-      } as any,
-      streams: quote.streams,
-    });
+    setDownloadingId(quote.id);
+    try {
+      const { generateQuotePDF } = await import('./PdfGenerator');
+      const agg = aggregateQuoteStreams(quote.streams);
+      const primary = quote.streams[0];
+      generateQuotePDF({
+        customerName: overrideSite || quote.customer_name || 'Site A',
+        companyName: overrideCompany || quote.company_name || 'Valued Procurement Client',
+        email: overrideEmail || user?.email || '',
+        config: primary,
+        result: {
+          totalMonthlyCost: agg.totalMonthlyCost,
+          totalAnnualCost: agg.totalAnnualCost,
+          totalWeightKgPerMonth: agg.totalWeightKgPerMonth,
+          recycledWeightKgPerMonth: agg.recycledWeightKgPerMonth,
+          recyclingRate: agg.recyclingRate,
+          co2SavedKgPerMonth: agg.co2SavedKgPerMonth,
+          prnEstimate: agg.prnEstimate,
+        } as any,
+        streams: quote.streams,
+        brandName: brandName || undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        validityMonths,
+      });
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   // Aggregated analytics across ALL saved quotes (every stream in every quote)
@@ -250,6 +279,89 @@ export default function SavedQuotesTab({
               <span>{errorMsg}</span>
             </div>
           )}
+
+          {/* PDF document customization -- applies to any "Download PDF"
+              click below. Site/Company/Email override whatever was stored
+              on the quote when saved; leave blank to keep the saved values. */}
+          <div className="border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowDocOptions((v) => !v)}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              Customize PDF document details
+              {showDocOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showDocOptions && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">
+                    Your Company Name (replaces "WasteCalc Pro")
+                  </label>
+                  <input
+                    type="text"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="WasteCalc Pro"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Site (override)</label>
+                  <input
+                    type="text"
+                    value={overrideSite}
+                    onChange={(e) => setOverrideSite(e.target.value)}
+                    placeholder="Leave blank to use saved value"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Company (override)</label>
+                  <input
+                    type="text"
+                    value={overrideCompany}
+                    onChange={(e) => setOverrideCompany(e.target.value)}
+                    placeholder="Leave blank to use saved value"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email (override)</label>
+                  <input
+                    type="email"
+                    value={overrideEmail}
+                    onChange={(e) => setOverrideEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Validity Period</label>
+                  <select
+                    value={validityMonths}
+                    onChange={(e) => setValidityMonths(parseInt(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none cursor-pointer"
+                  >
+                    <option value={12}>12 months</option>
+                    <option value={24}>24 months</option>
+                    <option value={36}>36 months</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Saved Quotes Log List */}
@@ -304,10 +416,15 @@ export default function SavedQuotesTab({
                       <div className="flex gap-1">
                         <button
                           onClick={(e) => handleDownloadSavedQuotePDF(quote, e)}
+                          disabled={downloadingId === quote.id}
                           title="Generate PDF Quote File"
-                          className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                          className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-60"
                         >
-                          <FileDown className="w-3.5 h-3.5" />
+                          {downloadingId === quote.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <FileDown className="w-3.5 h-3.5" />
+                          )}
                         </button>
                         <button
                           onClick={(e) => handleDeleteQuote(quote.id, e)}
@@ -434,4 +551,3 @@ export default function SavedQuotesTab({
     </div>
   );
 }
-
