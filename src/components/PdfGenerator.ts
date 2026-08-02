@@ -23,6 +23,7 @@ interface ESGReportData {
   companyName: string;
   config: PricingConfig;
   result: CalculationResult;
+  brandName?: string; // replaces "WasteCalc Pro" in the header, same as the Quote PDF
 }
 
 // A dedicated sustainability/ESG report, separate from the commercial quote
@@ -33,6 +34,7 @@ interface ESGReportData {
 // certified compliance data.
 export function generateESGReportPDF(data: ESGReportData): void {
   const { customerName, companyName, config, result } = data;
+  const brand = (data.brandName || '').trim() || 'WasteCalc Pro';
   const wasteSpec = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
   const spec = getContainerSpec(config.containerType, config.selectedSize);
 
@@ -54,7 +56,7 @@ export function generateESGReportPDF(data: ESGReportData): void {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('WasteCalc Pro', 14, 15);
+  doc.text(brand, 14, 15);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('Sustainability & ESG Estimate Report', 14, 22);
@@ -177,7 +179,7 @@ export function generateESGReportPDF(data: ESGReportData): void {
   doc.text('WasteCalc Pro — wastecalcpro.co.uk', 14, 285);
   doc.text('Estimate only. Not a certified or audited ESG disclosure.', 130, 285);
 
-  doc.save(`WasteCalc-Pro-ESG-Report-${companyName.replace(/[^a-z0-9]/gi, '-') || 'Report'}.pdf`);
+  doc.save(`${brand.replace(/[^a-zA-Z0-9]/g, '-')}-ESG-Report-${companyName.replace(/[^a-z0-9]/gi, '-') || 'Report'}.pdf`);
 }
 
 export function generateQuotePDF(data: QuotePDFData): void {

@@ -50,6 +50,9 @@ interface BinCalculatorProps {
   onNewQuote?: () => void;
   onQuickSave?: () => void;
   quickSaving?: boolean;
+  customerName?: string;
+  companyName?: string;
+  brandName?: string;
 }
 
 export default function BinCalculator({ 
@@ -60,7 +63,10 @@ export default function BinCalculator({
   onUpdateStreams,
   onNewQuote,
   onQuickSave,
-  quickSaving = false
+  quickSaving = false,
+  customerName,
+  companyName,
+  brandName
 }: BinCalculatorProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -1122,7 +1128,7 @@ export default function BinCalculator({
           )}
           
           {/* Circularity ESG Dashboard */}
-          <CircularityDashboard config={config} result={result} />
+          <CircularityDashboard config={config} result={result} customerName={customerName} companyName={companyName} brandName={brandName} />
         </div>
       </div>
 

@@ -36,9 +36,12 @@ interface CircularityDashboardProps {
   config: PricingConfig;
   result: CalculationResult;
   onChangeConfig?: (config: PricingConfig) => void;
+  customerName?: string;
+  companyName?: string;
+  brandName?: string;
 }
 
-export default function CircularityDashboard({ config, result, onChangeConfig }: CircularityDashboardProps) {
+export default function CircularityDashboard({ config, result, onChangeConfig, customerName, companyName, brandName }: CircularityDashboardProps) {
   const [activeTab, setActiveTab] = useState<'material' | 'prn' | 'diversion'>('material');
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -48,8 +51,9 @@ export default function CircularityDashboard({ config, result, onChangeConfig }:
     try {
       const { generateESGReportPDF } = await import('./PdfGenerator');
       generateESGReportPDF({
-        customerName: 'Procurement Team',
-        companyName: '',
+        customerName: customerName || 'Your Team',
+        companyName: companyName || '',
+        brandName,
         config,
         result,
       });

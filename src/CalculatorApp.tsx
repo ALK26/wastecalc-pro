@@ -464,6 +464,9 @@ export default function CalculatorApp() {
                 onNewQuote={handleNewQuote}
                 onQuickSave={handleQuickSave}
                 quickSaving={quickSaving}
+                customerName={customerName}
+                companyName={companyName}
+                brandName={brandName}
               />
 
               {/* Float-Style Procurement Quick Action Footer */}
