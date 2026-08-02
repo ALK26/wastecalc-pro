@@ -19,7 +19,10 @@ import {
   Loader2,
   Tag,
   CheckCircle,
-  X
+  X,
+  Settings2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   PricingConfig, 
@@ -51,13 +54,25 @@ function TabLoadingFallback() {
 
 type TabType = 'calculator' | 'comparison' | 'lead' | 'saved' | 'pricing';
 
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
 export default function CalculatorApp() {
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   
   // App-wide client profile state
-  const [customerName, setCustomerName] = useState('');
+  const [customerName, setCustomerName] = useState(''); // shown on the PDF as "Site"
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
+
+  // PDF document customization -- lets the person exporting the quote
+  // white-label it (their own company name instead of "WasteCalc Pro") and
+  // set a real start date + validity period instead of a hardcoded 30 days.
+  const [brandName, setBrandName] = useState('');
+  const [startDate, setStartDate] = useState(todayISO());
+  const [validityMonths, setValidityMonths] = useState(12);
+  const [showDocOptions, setShowDocOptions] = useState(false);
 
   // App-wide state for the active calculator config. Restored from
   // localStorage on load (if present) so a refresh or revisit doesn't lose
@@ -200,12 +215,15 @@ export default function CalculatorApp() {
     try {
       const { generateQuotePDF } = await import('./components/PdfGenerator');
       generateQuotePDF({
-        customerName: customerName || 'Commercial Operations Manager',
+        customerName: customerName || 'Site A',
         companyName: companyName || 'Valued Procurement Client',
         email: email || 'procurement@wastecalcpro.co.uk',
         config: calculatorConfig,
         result: activeResult,
         streams: quoteStreams,
+        brandName: brandName || undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        validityMonths,
       });
     } finally {
       setPdfGenerating(false);
@@ -449,42 +467,128 @@ export default function CalculatorApp() {
               />
 
               {/* Float-Style Procurement Quick Action Footer */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="text-center sm:text-left">
-                  <h4 className="font-display font-bold text-sm text-slate-800">
-                    Happy with this setup?
-                  </h4>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Download a PDF quote to keep, or generate a ready-to-send proposal email for your own team or decision-makers.
-                  </p>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="text-center sm:text-left">
+                    <h4 className="font-display font-bold text-sm text-slate-800">
+                      Happy with this setup?
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Download a PDF quote to keep, or generate a ready-to-send proposal email for your own team or decision-makers.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                    <button
+                      id="download_pdf_quote_btn"
+                      onClick={hasProAccess ? handleDownloadPDF : () => setActiveTab('saved')}
+                      disabled={pdfGenerating}
+                      className="flex-1 sm:flex-none text-xs border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                    >
+                      {pdfGenerating ? (
+                        <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 text-emerald-500" />
+                      )}
+                      {pdfGenerating
+                        ? 'Preparing PDF…'
+                        : hasProAccess
+                          ? 'Download PDF Quote'
+                          : 'Upgrade to Export PDF'}
+                    </button>
+                    <button
+                      id="proceed_to_lead_btn"
+                      onClick={() => setActiveTab('lead')}
+                      className="flex-1 sm:flex-none text-xs bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-lg font-bold shadow transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      Proceed to Proposal
+                      <ArrowRight className="w-4 h-4 text-emerald-400" />
+                    </button>
+                  </div>
                 </div>
-                
-                <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+
+                {/* Editable PDF document details -- white-label brand name,
+                    Site/Company/Email, and a real start date + validity
+                    period instead of a hardcoded 30 days. Collapsed by
+                    default to keep the footer clean for people who don't need it. */}
+                <div className="border-t border-slate-100 pt-4">
                   <button
-                    id="download_pdf_quote_btn"
-                    onClick={hasProAccess ? handleDownloadPDF : () => setActiveTab('saved')}
-                    disabled={pdfGenerating}
-                    className="flex-1 sm:flex-none text-xs border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                    type="button"
+                    onClick={() => setShowDocOptions((v) => !v)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
-                    {pdfGenerating ? (
-                      <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4 text-emerald-500" />
-                    )}
-                    {pdfGenerating
-                      ? 'Preparing PDF…'
-                      : hasProAccess
-                        ? 'Download PDF Quote'
-                        : 'Upgrade to Export PDF'}
+                    <Settings2 className="w-3.5 h-3.5" />
+                    Customize PDF document details
+                    {showDocOptions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
-                  <button
-                    id="proceed_to_lead_btn"
-                    onClick={() => setActiveTab('lead')}
-                    className="flex-1 sm:flex-none text-xs bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-lg font-bold shadow transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    Proceed to Proposal
-                    <ArrowRight className="w-4 h-4 text-emerald-400" />
-                  </button>
+
+                  {showDocOptions && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">
+                          Your Company Name (replaces "WasteCalc Pro")
+                        </label>
+                        <input
+                          type="text"
+                          value={brandName}
+                          onChange={(e) => setBrandName(e.target.value)}
+                          placeholder="WasteCalc Pro"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Site</label>
+                        <input
+                          type="text"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="e.g. Main Office, London"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Company</label>
+                        <input
+                          type="text"
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="Your company"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email</label>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@company.com"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Validity Period</label>
+                        <select
+                          value={validityMonths}
+                          onChange={(e) => setValidityMonths(parseInt(e.target.value))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-emerald-500 focus:bg-white outline-none cursor-pointer"
+                        >
+                          <option value={12}>12 months</option>
+                          <option value={24}>24 months</option>
+                          <option value={36}>36 months</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -502,4 +606,3 @@ export default function CalculatorApp() {
     </div>
   );
 }
-

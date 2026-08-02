@@ -7,12 +7,15 @@ import { jsPDF } from 'jspdf';
 import { PricingConfig, CalculationResult, WASTE_TYPES, getContainerSpec, SKIPS_RORO_SPECS } from '../types';
 
 interface QuotePDFData {
-  customerName: string;
+  customerName: string; // shown on the document as "Site"
   companyName: string;
   email: string;
   config: PricingConfig;
   result: CalculationResult;
   streams?: PricingConfig[];
+  brandName?: string; // replaces "WasteCalc Pro" in the document header -- lets the person exporting this put their own company name on it
+  startDate?: Date; // defaults to today
+  validityMonths?: number; // defaults to 12
 }
 
 interface ESGReportData {
@@ -179,6 +182,7 @@ export function generateESGReportPDF(data: ESGReportData): void {
 
 export function generateQuotePDF(data: QuotePDFData): void {
   const { customerName, companyName, email, config, result } = data;
+  const brand = (data.brandName || '').trim() || 'WasteCalc Pro';
   const spec = getContainerSpec(config.containerType, config.selectedSize);
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -191,9 +195,15 @@ export function generateQuotePDF(data: QuotePDFData): void {
     month: 'long',
     year: 'numeric',
   });
-  
-  const expiryDate = new Date();
-  expiryDate.setDate(expiryDate.getDate() + 30);
+
+  // Start date + duration now come from the user instead of a hardcoded
+  // "30 days from today" -- defaults preserved (today, 12 months) if not given.
+  const startDate = data.startDate || new Date();
+  const validityMonths = data.validityMonths || 12;
+  const expiryDate = new Date(startDate);
+  expiryDate.setMonth(expiryDate.getMonth() + validityMonths);
+
+  const startStr = startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const expiryStr = expiryDate.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -215,27 +225,27 @@ export function generateQuotePDF(data: QuotePDFData): void {
   doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
   doc.rect(0, 32, 210, 2, 'F');
 
-  // Header Title
+  // Header Title -- uses the custom brand name if one was given
   doc.setTextColor(255, 255, 255);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(22);
-  doc.text('WasteCalc Pro', 14, 18);
+  doc.text(brand, 14, 18);
   
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(190, 190, 190);
-  doc.text('Commercial B2B Industrial Waste Solutions & Sustainability', 14, 25);
+  doc.text('Commercial Waste Cost Estimate', 14, 25);
 
   // Header Quote Details (Right Aligned)
   doc.setTextColor(255, 255, 255);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('QUOTATION', 196, 15, { align: 'right' });
+  doc.text('COST ESTIMATE', 196, 15, { align: 'right' });
   
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(220, 220, 220);
-  doc.text(`Quote Ref: ${quoteNo}`, 196, 21, { align: 'right' });
+  doc.text(`Reference: ${quoteNo}`, 196, 21, { align: 'right' });
   doc.text(`Date: ${currentDate}`, 196, 26, { align: 'right' });
 
   // 2. Client Details Card
@@ -248,14 +258,14 @@ export function generateQuotePDF(data: QuotePDFData): void {
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('ISSUED TO:', 20, y + 6);
+  doc.text('PREPARED FOR:', 20, y + 6);
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   
-  // Grid layout for metadata
-  doc.text(`Customer:`, 20, y + 13);
+  // Grid layout for metadata -- "Site" instead of "Customer", all editable upstream
+  doc.text(`Site:`, 20, y + 13);
   doc.setFont('Helvetica', 'bold');
   doc.text(`${customerName}`, 42, y + 13);
   
@@ -268,17 +278,17 @@ export function generateQuotePDF(data: QuotePDFData): void {
   doc.text(`Email:`, 20, y + 25);
   doc.text(`${email}`, 42, y + 25);
 
-  // Quote Expiry Info (Right Grid)
-  doc.text(`Validity:`, 115, y + 13);
+  // Start date + validity duration (editable, replaces the old hardcoded 30 days)
+  doc.text(`Start date:`, 115, y + 13);
   doc.setFont('Helvetica', 'bold');
-  doc.text('30 Days (Net)', 135, y + 13);
+  doc.text(startStr, 145, y + 13);
   
   doc.setFont('Helvetica', 'normal');
   doc.text(`Expires:`, 115, y + 19);
-  doc.text(`${expiryStr}`, 135, y + 19);
+  doc.text(`${expiryStr} (${validityMonths}mo)`, 145, y + 19);
   
-  doc.text(`Territory:`, 115, y + 25);
-  doc.text(`United Kingdom (GBP)`, 135, y + 25);
+  doc.text(`Currency:`, 115, y + 25);
+  doc.text(`GBP (United Kingdom)`, 145, y + 25);
 
   // 3. Service Configuration Summary
   y = 86;
@@ -524,17 +534,24 @@ export function generateQuotePDF(data: QuotePDFData): void {
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('TERMS AND CONDITIONS OF PROPOSAL:', 14, y + 5);
+  doc.text('NOTES ON THIS ESTIMATE:', 14, y + 5);
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139); // cool gray
-  
+
+  // WasteCalc Pro is a comparison/estimation tool, not a waste management
+  // provider -- this document must never imply it is metering usage, holding
+  // a regulatory compliance status, or committing to issue service
+  // documentation like a Waste Transfer Note.
   const terms = [
-    '1. Lift charges and disposal weights are calculated monthly in arrears based on telemetry weight sensor sheets.',
-    '2. Landfill and recycling operations are fully EPA and Duty of Care compliant under the Environmental Protection Act 1990.',
-    '3. This proposal does not constitute a legal Waste Transfer Note (WTN) which will be issued upon operational commencement.',
-    '4. Estimated Carbon Savings are calculated using DEFRA Greenhouse Gas Reporting Factors to support corporate ESG disclosures.',
+    '1. This is a cost estimate generated from the details you provided -- not a metered, monitored, or audited billing arrangement.',
+    '2. This document was generated using WasteCalc Pro, a comparison and estimation tool -- not a waste management provider. Any',
+    '    actual collection service, contract, and compliance documentation (including a Waste Transfer Note) would be issued by your',
+    '    chosen waste carrier.',
+    '3. Recycling rate, CO2, and PRN figures are estimates based on standard industry assumptions per material type -- not measured,',
+    '    audited, or sourced from a specific regulatory dataset. Confirm actual figures with your waste carrier for compliance reporting.',
+    '4. Confirm final pricing, contract terms, and regulatory compliance directly with your chosen waste management provider.',
   ];
 
   terms.forEach((term, idx) => {
@@ -543,5 +560,5 @@ export function generateQuotePDF(data: QuotePDFData): void {
 
   // Save File
   const slug = companyName ? companyName.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'client';
-  doc.save(`WasteCalcPro_Quote_${slug}.pdf`);
+  doc.save(`${brand.replace(/[^a-zA-Z0-9]/g, '')}_Quote_${slug}.pdf`);
 }

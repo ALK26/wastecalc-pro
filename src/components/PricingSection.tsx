@@ -31,7 +31,7 @@ export default function PricingSection() {
   const { hasProAccess, entitlement, trialDaysLeft, refetch } = useEntitlement();
   const { startCheckout, starting, error } = useCheckout();
   const { cancelSubscription, reactivateSubscription, loading: cancelLoading, error: cancelError } = useCancelSubscription();
-  const [billing, setBilling] = useState<'annual' | 'monthly'>('annual');
+  const [billing, setBilling] = useState<'annual' | 'monthly'>('monthly');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const proPrice = billing === 'annual' ? PRICE_IDS.proAnnual : PRICE_IDS.proMonthly;
