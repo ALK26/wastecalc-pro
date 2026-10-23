@@ -64,12 +64,18 @@ async function hasLifetimeRow(supabaseUserId: string) {
 }
 
 async function grantLifetimeFromSession(session: Stripe.Checkout.Session) {
-  if (session.payment_status !== "paid") {
-    console.log("Ignoring unpaid payment-mode session", session.id, session.payment_status);
-    return;
-  }
   if (session.metadata?.product_key !== LIFETIME_PRODUCT_KEY) {
     console.error("Payment-mode session with unknown product_key", session.id, session.metadata?.product_key);
+    return;
+  }
+  // A 100%-off promotion code completes checkout with nothing to charge:
+  // Stripe reports 'no_payment_required' rather than 'paid'. Only accept that
+  // when the total really is zero; the product_key check above already
+  // guarantees the session was created by our own checkout function.
+  const isPaid = session.payment_status === "paid";
+  const isFullyDiscounted = session.payment_status === "no_payment_required" && session.amount_total === 0;
+  if (!isPaid && !isFullyDiscounted) {
+    console.log("Ignoring unpaid payment-mode session", session.id, session.payment_status, session.amount_total);
     return;
   }
 
