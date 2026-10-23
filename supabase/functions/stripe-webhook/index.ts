@@ -97,7 +97,7 @@ async function grantLifetimeFromSession(session: Stripe.Checkout.Session) {
   await upsertLifetimeRow(supabaseUserId, priceId, (session.customer as string | null) ?? null);
 
   const email = session.customer_details?.email?.trim().toLowerCase();
-  if (email) await linkEmailToAnonymousBuyer(supabaseUserId, email, priceId, (session.customer as string | null) ?? null);
+  if (email) await requestEmailConfirmation(supabaseUserId, email, priceId, (session.customer as string | null) ?? null);
 }
 
 async function upsertLifetimeRow(userId: string, priceId: string, stripeCustomerId: string | null) {
@@ -123,14 +123,19 @@ async function upsertLifetimeRow(userId: string, priceId: string, stripeCustomer
 }
 
 // Most buyers check out from an anonymous session, so their purchase would
-// be lost with their browser storage. Attach the email Stripe collected to
-// that account so they can sign back in with a magic link from any device.
+// be lost with their browser storage. The email Stripe collected is
+// unverified (a typo or someone else's address), so it is NOT attached to
+// the account here: it's stored as pending and a single-use link is emailed.
+// The confirm-recovery-email function attaches it only once that link is
+// used. Access on the buyer's current device is already granted above.
 // Idempotent, so a Stripe retry can safely re-run it:
 // - accounts that already have an email are never touched
 // - if another account already owns the email, don't merge accounts --
 //   grant that account lifetime access too, so signing in with the email
 //   still reaches the purchase
-async function linkEmailToAnonymousBuyer(
+const CONFIRM_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function requestEmailConfirmation(
   userId: string,
   email: string,
   priceId: string,
@@ -150,23 +155,73 @@ async function linkEmailToAnonymousBuyer(
     return;
   }
 
-  const { data: updated, error: updateError } = await supabase.auth.admin.updateUserById(userId, { email });
-  if (updateError) {
-    if (updateError.code === "email_exists") {
-      // An auth account owns this email but its profile email is stale, so
-      // the lookup above missed it. Retrying would fail the same way; the
-      // purchase stays on the anonymous account. Needs manual follow-up.
-      console.error("Buyer email registered to an account with a stale profile email", userId);
-      return;
-    }
-    throw new Error(`Failed to link email to buyer ${userId}: ${updateError.message}`);
-  }
-  if (updated?.user?.is_anonymous) {
-    console.error("Email linked but account still marked anonymous", userId);
+  // A fresh token on every run: a retry replaces any earlier, unsent link.
+  const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+  const { error: pendingError } = await supabase.from("pending_email_links").upsert(
+    {
+      user_id: userId,
+      email,
+      token_hash: await sha256Hex(token),
+      expires_at: new Date(Date.now() + CONFIRM_LINK_TTL_MS).toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (pendingError) throw new Error(`Failed to store pending email for ${userId}: ${pendingError.message}`);
+
+  await sendConfirmationEmail(email, token);
+}
+
+async function sendConfirmationEmail(email: string, token: string) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  const fromAddress = Deno.env.get("RESEND_FROM_EMAIL");
+  const appUrl = Deno.env.get("APP_URL");
+  if (!resendApiKey || !fromAddress || !appUrl) {
+    // Not retryable: the pending row is kept so a link can be re-sent once
+    // email is configured.
+    console.error("Confirmation email not sent: RESEND_API_KEY, RESEND_FROM_EMAIL or APP_URL is not set");
+    return;
   }
 
-  const { error: profileError } = await supabase.from("profiles").update({ email }).eq("id", userId);
-  if (profileError) console.error("Failed to sync profile email", userId, profileError);
+  const link = `${appUrl.replace(/\/$/, "")}/confirm-email?token=${token}`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: email,
+      subject: "Confirm your email to secure your WasteCalc Pro lifetime access",
+      text: [
+        "Thanks for buying WasteCalc Pro.",
+        "",
+        "Your lifetime access is already active on the device you bought it on.",
+        "Confirm this email address so you can sign back in from any device:",
+        "",
+        link,
+        "",
+        "This link expires in 7 days. If you didn't buy WasteCalc Pro, ignore this email and nothing will be linked.",
+      ].join("\n"),
+      html: `<p>Thanks for buying WasteCalc Pro.</p>
+<p>Your lifetime access is already active on the device you bought it on. Confirm this email address so you can sign back in from any device:</p>
+<p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#0f172a;color:#ffffff;border-radius:10px;font-weight:bold;text-decoration:none">Confirm my email</a></p>
+<p style="color:#64748b;font-size:13px">This link expires in 7 days. If you didn't buy WasteCalc Pro, ignore this email and nothing will be linked.</p>`,
+    }),
+  });
+  if (res.ok) return;
+
+  const detail = await res.text();
+  if (res.status >= 500) {
+    // Transient: throw so Stripe retries the event (which mints a new link).
+    throw new Error(`Resend ${res.status}: ${detail}`);
+  }
+  console.error("Resend rejected confirmation email", res.status, detail);
+}
+
+function toHex(bytes: Uint8Array) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256Hex(value: string) {
+  return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
 }
 
 async function upsertFromSubscription(sub: Stripe.Subscription, supabaseUserId: string | null) {
