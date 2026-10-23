@@ -69,7 +69,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
           <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center font-bold text-emerald-400 font-display mx-auto mb-5">W</div>
           <h1 className="text-xl font-bold font-display text-slate-900 mb-1">Sign in to WasteCalc Pro</h1>
           <p className="text-xs text-slate-500 mb-6">
-            The calculator is free. Unlock every Pro feature with £16 One-Time Lifetime Access.
+            Sign in to access your WasteCalc Pro workspace.
           </p>
 
           {step === 'email' ? (

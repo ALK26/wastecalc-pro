@@ -321,7 +321,7 @@ export default function CalculatorApp() {
                   )}
                   {!hasProAccess && (
                     <span className="px-3 py-1.5 bg-slate-800 rounded border border-slate-700 text-[10px] text-slate-300">
-                      Free plan
+                      Standard View
                     </span>
                   )}
                 </>
