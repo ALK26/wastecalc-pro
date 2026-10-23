@@ -82,19 +82,21 @@ export default function CalculatorApp() {
     containerType: 'eurobin',
     selectedSize: '1100L',
     quantity: 1,
-    liftRate: 19.50, // default lift for 1100L
-    rentalFee: 4.50, // default rent for 1100L
-    weightAllowance: 70, // default limit for 1100L
-    overweightSurcharge: 0.20, // £0.20 per kg
-    estimatedWeight: 75, // slightly overweight to trigger compliance alerts
+    // Quote figures start blank: the user enters their own supplier's rates
+    // (same clean slate as switching container type/size).
+    liftRate: 0,
+    rentalFee: 0,
+    weightAllowance: 0,
+    overweightSurcharge: 0,
+    estimatedWeight: 0,
     frequency: 'weekly',
     wasteType: 'general',
     customRecyclingRateEnabled: false,
     customRecyclingRate: 50,
-    skipsMinTonnage: 1,
-    skipsDisposalRate: 140,
-    skipsExcessRate: 160,
-    skipsMonthlyRental: 50,
+    skipsMinTonnage: 0,
+    skipsDisposalRate: 0,
+    skipsExcessRate: 0,
+    skipsMonthlyRental: 0,
     currency: 'GBP',
     enclosed: false
   };

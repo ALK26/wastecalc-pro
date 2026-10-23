@@ -5,6 +5,7 @@ import {
   aggregateQuoteStreams,
   getContainerSpec,
   canAddStreamToBasket,
+  withBlankQuoteFigures,
   FREQUENCY_MULTIPLIERS,
   WASTE_TYPES,
 } from './types';
@@ -210,6 +211,35 @@ describe('aggregateQuoteStreams', () => {
     expect(agg.streamCount).toBe(0);
     expect(agg.totalMonthlyCost).toBe(0);
     expect(agg.recyclingRate).toBe(0);
+  });
+});
+
+describe('withBlankQuoteFigures', () => {
+  it('zeroes every quote figure and keeps the rest of the stream', () => {
+    const blank = withBlankQuoteFigures(skip({ wasteType: 'cardboard', quantity: 3 }));
+    expect(blank).toMatchObject({
+      liftRate: 0,
+      rentalFee: 0,
+      weightAllowance: 0,
+      overweightSurcharge: 0,
+      estimatedWeight: 0,
+      skipsMinTonnage: 0,
+      skipsDisposalRate: 0,
+      skipsExcessRate: 0,
+      skipsMonthlyRental: 0,
+      wasteType: 'cardboard',
+      quantity: 3,
+      containerType: 'skips_roro',
+    });
+  });
+
+  it('prices a blanked stream at zero without NaN', () => {
+    for (const config of [eurobin(), skip()]) {
+      const r = calculatePricing(withBlankQuoteFigures(config));
+      expect(r.totalMonthlyCost).toBe(0);
+      expect(r.totalWeightKgPerMonth).toBe(0);
+      expect(Number.isNaN(r.co2SavedKgPerMonth)).toBe(false);
+    }
   });
 });
 

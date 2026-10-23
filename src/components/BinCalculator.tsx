@@ -37,8 +37,10 @@ import {
   calculatePricing,
   formatCurrency,
   aggregateQuoteStreams,
-  canAddStreamToBasket
+  canAddStreamToBasket,
+  withBlankQuoteFigures
 } from '../types';
+import NumberInput from './NumberInput';
 import ContainerVisualizer from './ContainerVisualizer';
 import CircularityDashboard from './CircularityDashboard';
 
@@ -116,73 +118,28 @@ export default function BinCalculator({
 
   const aggTotals = calculateAggregatedTotals();
 
-  // Handle Container Class Toggle
+  // Handle Container Class Toggle. Rates are blanked (see
+  // withBlankQuoteFigures) so figures from the previous container never
+  // carry over silently; re-clicking the active class is a no-op.
   const handleTypeToggle = (type: ContainerType) => {
+    if (type === config.containerType) return;
     let defaultSize = '1100L';
     if (type === 'rel') defaultSize = '8yd_fel';
     if (type === 'skips_roro') defaultSize = '8yd_skip';
-    
+
     const nextFrequency = (type !== 'skips_roro' && config.frequency === 'on_demand') ? 'weekly' : config.frequency;
-    const newSpec = getContainerSpec(type, defaultSize);
-    
-    if (type === 'skips_roro') {
-      const skipSpec = SKIPS_RORO_SPECS[defaultSize as any] || SKIPS_RORO_SPECS['8yd_skip'];
-      onChangeConfig({
-        ...config,
-        containerType: type,
-        selectedSize: defaultSize,
-        frequency: nextFrequency,
-        liftRate: skipSpec.defaultHaulageCost, // transport cost
-        rentalFee: skipSpec.defaultMonthlyRental / 4.33,
-        weightAllowance: skipSpec.defaultMinTonnage * 1000,
-        estimatedWeight: skipSpec.defaultMinTonnage * 1000 + 500, // slightly overweight
-        skipsMinTonnage: skipSpec.defaultMinTonnage,
-        skipsDisposalRate: skipSpec.defaultDisposalRate,
-        skipsExcessRate: skipSpec.defaultExcessRate,
-        skipsMonthlyRental: skipSpec.defaultMonthlyRental,
-      });
-    } else {
-      onChangeConfig({
-        ...config,
-        containerType: type,
-        selectedSize: defaultSize,
-        frequency: nextFrequency,
-        liftRate: newSpec.defaultLiftRate,
-        rentalFee: newSpec.defaultRentalFee,
-        weightAllowance: newSpec.defaultWeightAllowance,
-        estimatedWeight: newSpec.defaultWeightAllowance + 5, // slightly overweight
-      });
-    }
+    onChangeConfig(withBlankQuoteFigures({
+      ...config,
+      containerType: type,
+      selectedSize: defaultSize,
+      frequency: nextFrequency,
+    }));
   };
 
   // Handle Size Selection
   const handleSizeSelect = (size: string) => {
-    const newSpec = getContainerSpec(config.containerType, size);
-    
-    if (config.containerType === 'skips_roro') {
-      const skipSpec = SKIPS_RORO_SPECS[size as any] || SKIPS_RORO_SPECS['8yd_skip'];
-      onChangeConfig({
-        ...config,
-        selectedSize: size,
-        liftRate: skipSpec.defaultHaulageCost,
-        rentalFee: skipSpec.defaultMonthlyRental / 4.33,
-        weightAllowance: skipSpec.defaultMinTonnage * 1000,
-        estimatedWeight: skipSpec.defaultMinTonnage * 1000 + 500,
-        skipsMinTonnage: skipSpec.defaultMinTonnage,
-        skipsDisposalRate: skipSpec.defaultDisposalRate,
-        skipsExcessRate: skipSpec.defaultExcessRate,
-        skipsMonthlyRental: skipSpec.defaultMonthlyRental,
-      });
-    } else {
-      onChangeConfig({
-        ...config,
-        selectedSize: size,
-        liftRate: newSpec.defaultLiftRate,
-        rentalFee: newSpec.defaultRentalFee,
-        weightAllowance: newSpec.defaultWeightAllowance,
-        estimatedWeight: newSpec.defaultWeightAllowance + 5,
-      });
-    }
+    if (size === config.selectedSize) return;
+    onChangeConfig(withBlankQuoteFigures({ ...config, selectedSize: size }));
   };
 
   // Stepper for quantity
@@ -195,6 +152,9 @@ export default function BinCalculator({
   const updateVal = (key: keyof PricingConfig, val: any) => {
     onChangeConfig({ ...config, [key]: val });
   };
+
+  const currencySymbol = config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : '€';
+  const numberBoxClass = 'w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none';
 
   const isOverweight = config.containerType === 'skips_roro'
     ? config.estimatedWeight > (config.skipsMinTonnage * 1000)
@@ -535,7 +495,7 @@ export default function BinCalculator({
               </div>
             </div>
             <div className="text-right text-[10px] font-mono text-slate-500">
-              <p>Base Allowance: <strong className="text-slate-800">{config.containerType === 'skips_roro' ? `${config.skipsMinTonnage} Tonnes` : `${spec.defaultWeightAllowance} kg`}</strong></p>
+              <p>Base Allowance: <strong className="text-slate-800">{config.containerType === 'skips_roro' ? `${config.skipsMinTonnage} Tonnes` : `${config.weightAllowance} kg`}</strong></p>
             </div>
           </div>
 
@@ -647,25 +607,22 @@ export default function BinCalculator({
                 </div>
 
                 {config.customRecyclingRateEnabled && (
-                  <div className="space-y-1.5 pl-6">
+                  <div className="space-y-1 pl-6">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-slate-600">Custom Recycling Rate</span>
-                      <span className="font-mono font-bold text-emerald-600">{config.customRecyclingRate}%</span>
+                      <div className="flex items-center gap-1">
+                        <NumberInput
+                          integer
+                          value={config.customRecyclingRate}
+                          onValueChange={(v) => updateVal('customRecyclingRate', Math.min(100, v))}
+                          className={`${numberBoxClass} w-16 text-emerald-600`}
+                        />
+                        <span className="text-[10px] text-slate-400">%</span>
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={config.customRecyclingRate}
-                      onChange={(e) => updateVal('customRecyclingRate', parseInt(e.target.value))}
-                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                    />
-                    <div className="flex justify-between text-[8px] text-slate-400 font-mono">
-                      <span>0% (All Landfill)</span>
-                      <span>Default Material standard: {(activeWaste.defaultRecyclingRate * 100).toFixed(0)}%</span>
-                      <span>100% (Zero-Waste Circularity)</span>
-                    </div>
+                    <p className="text-[9px] text-slate-400 font-mono">
+                      Default material standard: {(activeWaste.defaultRecyclingRate * 100).toFixed(0)}%
+                    </p>
                   </div>
                 )}
 
@@ -683,23 +640,18 @@ export default function BinCalculator({
                 </div>
 
                 {config.landfillOptionEnabled && (
-                  <div className="space-y-1.5 pl-6">
+                  <div className="space-y-1 pl-6">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-slate-600">% of non-recycled waste sent to landfill</span>
-                      <span className="font-mono font-bold text-rose-600">{config.landfillRate ?? 0}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={config.landfillRate ?? 0}
-                      onChange={(e) => updateVal('landfillRate', parseInt(e.target.value))}
-                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                    />
-                    <div className="flex justify-between text-[8px] text-slate-400 font-mono">
-                      <span>0% (Full Energy Recovery)</span>
-                      <span>100% (All Landfill)</span>
+                      <div className="flex items-center gap-1">
+                        <NumberInput
+                          integer
+                          value={config.landfillRate ?? 0}
+                          onValueChange={(v) => updateVal('landfillRate', Math.min(100, v))}
+                          className={`${numberBoxClass} w-16 text-rose-600`}
+                        />
+                        <span className="text-[10px] text-slate-400">%</span>
+                      </div>
                     </div>
                     <p className="text-[9px] text-slate-400 pt-1">
                       Applies only to the portion that isn't recycled — check with your provider or waste transfer notes for a real figure.
@@ -796,341 +748,138 @@ export default function BinCalculator({
 
           {config.containerType === 'skips_roro' ? (
             // SKIPS AND ROROs PRICING INPUTS
-            <div className="space-y-5">
-              {/* Transport Haulage Slider */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Transport / Haulage Cost (flat per lift)</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={config.liftRate}
-                      onChange={(e) => updateVal('liftRate', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="500"
-                  step="5"
-                  value={config.liftRate}
-                  onChange={(e) => updateVal('liftRate', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(50, config.currency)}</span>
-                  <span>Default Spec: {formatCurrency(spec.defaultLiftRate, config.currency)}</span>
-                  <span>Max: {formatCurrency(500, config.currency)}</span>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Transport / Haulage Cost (flat per lift)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.liftRate}
+                    onValueChange={(v) => updateVal('liftRate', v)}
+                    className={numberBoxClass}
+                  />
                 </div>
               </div>
-
-              {/* Disposal Rate per Tonne */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Disposal Charge Rate (per Tonne)</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={config.skipsDisposalRate}
-                      onChange={(e) => updateVal('skipsDisposalRate', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none"
-                    />
-                    <span className="text-[10px] text-slate-400">/t</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="300"
-                  step="5"
-                  value={config.skipsDisposalRate}
-                  onChange={(e) => updateVal('skipsDisposalRate', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(50, config.currency)}</span>
-                  <span>Max: {formatCurrency(300, config.currency)}</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Disposal Charge Rate (per Tonne)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.skipsDisposalRate}
+                    onValueChange={(v) => updateVal('skipsDisposalRate', v)}
+                    className={numberBoxClass}
+                  />
+                  <span className="text-[10px] text-slate-400">/t</span>
                 </div>
               </div>
-
-              {/* Minimum Tonnage */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Minimum Tonnage Charged (Fair Base Tonnage)</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="1"
-                      max="20"
-                      step="0.5"
-                      value={config.skipsMinTonnage}
-                      onChange={(e) => updateVal('skipsMinTonnage', parseFloat(e.target.value) || 1)}
-                      className="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none"
-                    />
-                    <span className="text-[10px] text-slate-400">Tonnes</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  step="0.5"
-                  value={config.skipsMinTonnage}
-                  onChange={(e) => updateVal('skipsMinTonnage', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: 1.0 Tonne</span>
-                  <span>Max: 20.0 Tonnes</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Minimum Tonnage Charged (Fair Base Tonnage)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <NumberInput
+                    value={config.skipsMinTonnage}
+                    onValueChange={(v) => updateVal('skipsMinTonnage', v)}
+                    className={numberBoxClass}
+                  />
+                  <span className="text-[10px] text-slate-400">Tonnes</span>
                 </div>
               </div>
-
-              {/* Excess Rate */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Excess Tonnage Charge Rate (per Tonne)</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={config.skipsExcessRate}
-                      onChange={(e) => updateVal('skipsExcessRate', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none text-rose-600"
-                    />
-                    <span className="text-[10px] text-slate-400">/t</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="350"
-                  step="5"
-                  value={config.skipsExcessRate}
-                  onChange={(e) => updateVal('skipsExcessRate', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(50, config.currency)}</span>
-                  <span>Max: {formatCurrency(350, config.currency)}</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Excess Tonnage Charge Rate (per Tonne)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.skipsExcessRate}
+                    onValueChange={(v) => updateVal('skipsExcessRate', v)}
+                    className={`${numberBoxClass} text-rose-600`}
+                  />
+                  <span className="text-[10px] text-slate-400">/t</span>
                 </div>
               </div>
-
-              {/* Skip Estimated Weight Loader */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Estimated Load Weight (per Container Lift)</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="200"
-                      max="25000"
-                      step="100"
-                      value={config.estimatedWeight}
-                      onChange={(e) => updateVal('estimatedWeight', parseInt(e.target.value) || 200)}
-                      className={`w-24 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none ${isOverweight ? 'text-rose-500' : 'text-slate-900'}`}
-                    />
-                    <span className="text-[10px] text-slate-400">kg</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="200"
-                  max="25000"
-                  step="200"
-                  value={config.estimatedWeight}
-                  onChange={(e) => updateVal('estimatedWeight', parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: 0.2 tonnes</span>
-                  <span>Tonnage threshold: {config.skipsMinTonnage} t</span>
-                  <span>Max: 25.0 tonnes</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Estimated Load Weight (per Container Lift)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <NumberInput
+                    integer
+                    value={config.estimatedWeight}
+                    onValueChange={(v) => updateVal('estimatedWeight', v)}
+                    className={`${numberBoxClass} ${isOverweight ? 'text-rose-500' : 'text-slate-900'}`}
+                  />
+                  <span className="text-[10px] text-slate-400">kg</span>
                 </div>
               </div>
-
-              {/* Skip Monthly Rental Fee Slider */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Equipment Monthly Rental Charge (Optional)</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="5"
-                      value={config.skipsMonthlyRental}
-                      onChange={(e) => updateVal('skipsMonthlyRental', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none"
-                    />
-                    <span className="text-[10px] text-slate-400">/mo</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="200"
-                  step="10"
-                  value={config.skipsMonthlyRental}
-                  onChange={(e) => updateVal('skipsMonthlyRental', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(0, config.currency)} (No Rental)</span>
-                  <span>Max: {formatCurrency(200, config.currency)}</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Equipment Monthly Rental Charge (Optional)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.skipsMonthlyRental}
+                    onValueChange={(v) => updateVal('skipsMonthlyRental', v)}
+                    className={numberBoxClass}
+                  />
+                  <span className="text-[10px] text-slate-400">/mo</span>
                 </div>
               </div>
             </div>
           ) : (
-            // WHEELIE BINS AND RELs SLIDERS
-            <div className="space-y-5">
-              {/* Lift Rate Slider */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Lift Rate (per container emptied)</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={config.liftRate}
-                      onChange={(e) => updateVal('liftRate', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min={config.containerType === 'eurobin' ? "2" : "30"}
-                  max={config.containerType === 'eurobin' ? "50" : "400"}
-                  step="0.5"
-                  value={config.liftRate}
-                  onChange={(e) => updateVal('liftRate', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(config.containerType === 'eurobin' ? 2 : 30, config.currency)}</span>
-                  <span>Default Spec: {formatCurrency(spec.defaultLiftRate, config.currency)}</span>
-                  <span>Max: {formatCurrency(config.containerType === 'eurobin' ? 50 : 400, config.currency)}</span>
+            // WHEELIE BINS AND RELs PRICING INPUTS
+            <div className="space-y-4">
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Lift Rate (per container emptied)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.liftRate}
+                    onValueChange={(v) => updateVal('liftRate', v)}
+                    className={numberBoxClass}
+                  />
                 </div>
               </div>
-
-              {/* Rental Fee Slider */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Weekly Rental Fee (equipment hire)</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      value={config.rentalFee}
-                      onChange={(e) => updateVal('rentalFee', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none"
-                    />
-                    <span className="text-[10px] text-slate-400">/wk</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min={config.containerType === 'eurobin' ? "0.5" : "5"}
-                  max={config.containerType === 'eurobin' ? "15" : "80"}
-                  step="0.25"
-                  value={config.rentalFee}
-                  onChange={(e) => updateVal('rentalFee', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(config.containerType === 'eurobin' ? 0.5 : 5, config.currency)}</span>
-                  <span>Default Spec: {formatCurrency(spec.defaultRentalFee, config.currency)}</span>
-                  <span>Max: {formatCurrency(config.containerType === 'eurobin' ? 15 : 80, config.currency)}</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Weekly Rental Fee (equipment hire)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.rentalFee}
+                    onValueChange={(v) => updateVal('rentalFee', v)}
+                    className={numberBoxClass}
+                  />
+                  <span className="text-[10px] text-slate-400">/wk</span>
                 </div>
               </div>
-
-              {/* Estimated Weight Slider */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Estimated Loading Weight per Lift</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      step="5"
-                      value={config.estimatedWeight}
-                      onChange={(e) => updateVal('estimatedWeight', parseInt(e.target.value) || 0)}
-                      className={`w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none ${isOverweight ? 'text-amber-600' : 'text-slate-900'}`}
-                    />
-                    <span className="text-[10px] text-slate-400">kg</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="5"
-                  max={config.containerType === 'eurobin' ? "200" : "2500"}
-                  step={config.containerType === 'eurobin' ? "5" : "50"}
-                  value={config.estimatedWeight}
-                  onChange={(e) => updateVal('estimatedWeight', parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono">
-                  <span>Min: {config.containerType === 'eurobin' ? '5kg' : '50kg'}</span>
-                  <span className="flex items-center gap-1">
-                    Allocated Weight Allowance:
-                    <input
-                      type="number"
-                      min="1"
-                      step="5"
-                      value={config.weightAllowance}
-                      onChange={(e) => updateVal('weightAllowance', Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-12 px-1 py-0.5 bg-white border border-slate-200 rounded text-center font-mono font-bold text-[9px] text-slate-700 focus:border-emerald-500 outline-none"
-                    />
-                    kg
-                  </span>
-                  <span>Max: {config.containerType === 'eurobin' ? '200kg' : '2500kg'}</span>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Estimated Loading Weight per Lift</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <NumberInput
+                    integer
+                    value={config.estimatedWeight}
+                    onValueChange={(v) => updateVal('estimatedWeight', v)}
+                    className={`${numberBoxClass} ${isOverweight ? 'text-amber-600' : 'text-slate-900'}`}
+                  />
+                  <span className="text-[10px] text-slate-400">kg</span>
                 </div>
               </div>
-
-              {/* Surcharge Rate */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-600">Overweight Surcharge Surcharged</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 font-mono text-xs">{config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : config.currency === 'EUR' ? '€' : 'A$'}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={config.overweightSurcharge}
-                      onChange={(e) => updateVal('overweightSurcharge', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none text-rose-600"
-                    />
-                    <span className="text-[10px] text-slate-400">/kg extra</span>
-                  </div>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Allocated Weight Allowance (per lift)</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <NumberInput
+                    integer
+                    value={config.weightAllowance}
+                    onValueChange={(v) => updateVal('weightAllowance', v)}
+                    className={numberBoxClass}
+                  />
+                  <span className="text-[10px] text-slate-400">kg</span>
                 </div>
-                <input
-                  type="range"
-                  min="0.05"
-                  max="1.00"
-                  step="0.05"
-                  value={config.overweightSurcharge}
-                  onChange={(e) => updateVal('overweightSurcharge', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                  <span>Min: {formatCurrency(0.05, config.currency)}</span>
-                  <span>Base Surcharge Limit: {formatCurrency(0.20, config.currency)}</span>
-                  <span>Max: {formatCurrency(1.00, config.currency)}</span>
+              </div>
+              <div className="flex justify-between items-center gap-3 text-xs">
+                <span className="font-semibold text-slate-600">Overweight Surcharge Surcharged</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
+                  <NumberInput
+                    value={config.overweightSurcharge}
+                    onValueChange={(v) => updateVal('overweightSurcharge', v)}
+                    className={`${numberBoxClass} text-rose-600`}
+                  />
+                  <span className="text-[10px] text-slate-400">/kg extra</span>
                 </div>
               </div>
             </div>

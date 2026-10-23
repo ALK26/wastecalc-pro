@@ -618,6 +618,24 @@ export function aggregateQuoteStreams(streams: PricingConfig[]): AggregatedQuote
   };
 }
 
+// Every price and weight comes from the user's own supplier quote, so
+// switching container type or size blanks them to 0 rather than guessing
+// from spec defaults that would silently stand in for real figures.
+export function withBlankQuoteFigures(config: PricingConfig): PricingConfig {
+  return {
+    ...config,
+    liftRate: 0,
+    rentalFee: 0,
+    weightAllowance: 0,
+    overweightSurcharge: 0,
+    estimatedWeight: 0,
+    skipsMinTonnage: 0,
+    skipsDisposalRate: 0,
+    skipsExcessRate: 0,
+    skipsMonthlyRental: 0,
+  };
+}
+
 export type StreamAddCheck = { ok: true; reason?: undefined } | { ok: false; reason: string };
 
 // Currency is only a display label (no conversion), so a basket must hold a

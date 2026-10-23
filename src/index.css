@@ -21,3 +21,15 @@ body {
 }
 
 
+
+/* Clean numeric boxes: hide the browser's up/down spinner arrows on any
+   type="number" input (Chrome/Safari/Edge, then Firefox). */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

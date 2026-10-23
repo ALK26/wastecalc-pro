@@ -417,7 +417,7 @@ export default function ContainerVisualizer({ config }: ContainerVisualizerProps
           {spec.volumeLabel} Equipment
         </h4>
         <p className="text-[10px] text-gray-500 font-mono">
-          Vol: {spec.volumeM3.toFixed(2)} m³ | Std Allowance: {config.containerType === 'skips_roro' ? `${config.skipsMinTonnage}t` : `${spec.defaultWeightAllowance}kg`}
+          Vol: {spec.volumeM3.toFixed(2)} m³ | Std Allowance: {config.containerType === 'skips_roro' ? `${config.skipsMinTonnage}t` : `${config.weightAllowance}kg`}
         </p>
       </div>
     </div>
