@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -16,6 +17,11 @@ export default defineConfig(() => {
       // larger deploy while actively debugging. No runtime performance cost;
       // browsers only fetch .map files when DevTools is actually open.
       sourcemap: true,
+    },
+    test: {
+      // Unit tests cover pure logic (pricing math), so no DOM is needed.
+      environment: 'node',
+      include: ['src/**/*.test.{ts,tsx}'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
