@@ -9,16 +9,12 @@ const SUPABASE_URL = "https://zcbocghfpgifpldbtaua.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjYm9jZ2hmcGdpZnBsZGJ0YXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NDE1MDAsImV4cCI6MjA5OTQxNzUwMH0.RWLF3TezsYefqs7d5FM6hypg2lr_E_p6dSXRYX0xgBc";
 
-// Allow-list of real price IDs. Never trust a price ID (or amount) sent by
-// the client without checking it against something we control server-side --
-// otherwise anyone could POST an arbitrary price/product and checkout would
-// happily charge whatever they specify.
-const ALLOWED_PRICE_IDS = new Set([
-  "price_1TsQLKGqhMStfMk38a374A63", // Pro Annual
-  "price_1TsQLRGqhMStfMk3E6nBrdIZ", // Pro Monthly
-  "price_1TsQLVGqhMStfMk3IDPRtfa1", // Site License Annual
-  "price_1TsQLZGqhMStfMk3zI8a53oO", // Site License Monthly
-]);
+// The one product we sell: £16 one-time, lifetime Pro access. The amount is
+// fixed here server-side and nothing about price is read from the request --
+// otherwise anyone could POST an arbitrary amount and checkout would happily
+// charge whatever they specify.
+const LIFETIME_PRODUCT_KEY = "pro_lifetime";
+const LIFETIME_PRICE_PENCE = 1600;
 
 async function getSupabaseUser(accessToken: string) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -47,18 +43,12 @@ export default async (req: Request) => {
     return new Response(JSON.stringify({ error: "Invalid or expired session" }), { status: 401 });
   }
 
-  let priceId: string;
   let origin: string;
   try {
     const body = await req.json();
-    priceId = body.priceId;
     origin = body.origin || new URL(req.url).origin;
   } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400 });
-  }
-
-  if (!priceId || !ALLOWED_PRICE_IDS.has(priceId)) {
-    return new Response(JSON.stringify({ error: "Unknown price" }), { status: 400 });
   }
 
   const stripeSecretKey = Netlify.env.get("STRIPE_SECRET_KEY");
@@ -70,16 +60,32 @@ export default async (req: Request) => {
 
   try {
     const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+      mode: "payment",
       payment_method_types: ["card"],
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "gbp",
+            unit_amount: LIFETIME_PRICE_PENCE,
+            product_data: {
+              name: "WasteCalc Pro — Lifetime Access",
+              description: "One-time payment. Lifetime access to all Pro features.",
+              metadata: { product_key: LIFETIME_PRODUCT_KEY },
+            },
+          },
+        },
+      ],
       // Anonymous trial users have no email on file -- omitting this lets
       // Stripe's own Checkout page collect it directly at payment time,
       // which is the one moment email actually needs to exist at all.
       ...(user.email ? { customer_email: user.email } : {}),
       client_reference_id: user.id,
-      subscription_data: {
-        metadata: { supabase_user_id: user.id },
+      // Inline price_data mints a fresh price ID per session, so the webhook
+      // must identify the purchase by this metadata, not by price ID.
+      metadata: { supabase_user_id: user.id, product_key: LIFETIME_PRODUCT_KEY },
+      payment_intent_data: {
+        metadata: { supabase_user_id: user.id, product_key: LIFETIME_PRODUCT_KEY },
       },
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancelled`,

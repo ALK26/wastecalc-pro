@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Mail, KeyRound, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useEntitlement } from '../hooks/useEntitlement';
-import { useCheckout, PRICE_IDS } from '../hooks/useCheckout';
+import { useCheckout } from '../hooks/useCheckout';
 
 export default function UpgradeGate({
   featureName,
@@ -129,46 +129,26 @@ export default function UpgradeGate({
 
   // Signed in, trial expired / never subscribed: show the upsell.
   return (
-    <div className="max-w-2xl mx-auto py-16 px-6 text-center">
+    <div className="max-w-md mx-auto py-16 px-6 text-center">
       <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto mb-4">
         <Sparkles className="w-5 h-5" />
       </div>
       <h3 className="text-lg font-bold font-display text-slate-900 mb-1">{featureName} is a Pro feature</h3>
-      <p className="text-xs text-slate-500 mb-8">Your free trial has ended. Upgrade to get it back.</p>
+      <p className="text-xs text-slate-500 mb-8">Your free trial has ended. Upgrade once to get it back for good.</p>
 
-      <div className="grid sm:grid-cols-2 gap-4 text-left">
-        <div className="p-5 rounded-2xl border-2 border-slate-900 bg-white relative">
-          <span className="absolute -top-2.5 left-5 bg-slate-900 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-            Most popular
-          </span>
-          <h4 className="font-bold text-sm text-slate-900 mt-1">Pro</h4>
-          <p className="text-2xl font-bold text-slate-900 mt-1">
-            £69<span className="text-xs font-normal text-slate-400">/year</span>
-          </p>
-          <p className="text-[10px] text-slate-400 mb-4">or £7.50/month</p>
-          <button
-            disabled={starting}
-            onClick={() => startCheckout(PRICE_IDS.proAnnual)}
-            className="w-full py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
-          >
-            {starting ? 'Redirecting…' : 'Upgrade to Pro'}
-          </button>
-        </div>
-
-        <div className="p-5 rounded-2xl border border-slate-200 bg-white">
-          <h4 className="font-bold text-sm text-slate-900">Site License</h4>
-          <p className="text-2xl font-bold text-slate-900 mt-1">
-            £210<span className="text-xs font-normal text-slate-400">/year</span>
-          </p>
-          <p className="text-[10px] text-slate-400 mb-4">or £22.50/month · shared team access</p>
-          <button
-            disabled={starting}
-            onClick={() => startCheckout(PRICE_IDS.siteLicenseAnnual)}
-            className="w-full py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
-          >
-            {starting ? 'Redirecting…' : 'Get Site License'}
-          </button>
-        </div>
+      <div className="p-5 rounded-2xl border-2 border-slate-900 bg-white text-left">
+        <h4 className="font-bold text-sm text-slate-900">Pro Lifetime Access</h4>
+        <p className="text-2xl font-bold text-slate-900 mt-1">
+          £16<span className="text-xs font-normal text-slate-400"> one-time fee</span>
+        </p>
+        <p className="text-[10px] text-slate-400 mb-4">Pay once · lifetime access to every Pro feature</p>
+        <button
+          disabled={starting}
+          onClick={startCheckout}
+          className="w-full py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
+        >
+          {starting ? 'Redirecting…' : 'Get Lifetime Access — £16'}
+        </button>
       </div>
       {checkoutError && <p className="text-rose-600 text-[11px] mt-4">{checkoutError}</p>}
     </div>

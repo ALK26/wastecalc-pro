@@ -1,18 +1,11 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-export const PRICE_IDS = {
-  proAnnual: 'price_1TsQLKGqhMStfMk38a374A63',
-  proMonthly: 'price_1TsQLRGqhMStfMk3E6nBrdIZ',
-  siteLicenseAnnual: 'price_1TsQLVGqhMStfMk3IDPRtfa1',
-  siteLicenseMonthly: 'price_1TsQLZGqhMStfMk3zI8a53oO',
-} as const;
-
 export function useCheckout() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startCheckout = async (priceId: string) => {
+  const startCheckout = async () => {
     setError(null);
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -26,7 +19,7 @@ export function useCheckout() {
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ priceId, origin: window.location.origin }),
+        body: JSON.stringify({ origin: window.location.origin }),
       });
       const json = await res.json();
       if (!res.ok || !json.url) {

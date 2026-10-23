@@ -9,8 +9,6 @@ export interface Entitlement {
   tier: Tier;
   status: SubStatus;
   trialEndsAt: string | null;
-  currentPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
   stripePriceId: string | null;
 }
 
@@ -18,14 +16,13 @@ const FREE_ENTITLEMENT: Entitlement = {
   tier: 'free',
   status: 'free',
   trialEndsAt: null,
-  currentPeriodEnd: null,
-  cancelAtPeriodEnd: false,
   stripePriceId: null,
 };
 
 interface EntitlementContextValue {
   entitlement: Entitlement;
   hasProAccess: boolean;
+  hasLifetimeAccess: boolean;
   trialDaysLeft: number | null;
   loading: boolean;
   refetch: () => Promise<void>;
@@ -60,8 +57,6 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
         tier: row.tier,
         status: row.status,
         trialEndsAt: row.trial_ends_at,
-        currentPeriodEnd: row.current_period_end,
-        cancelAtPeriodEnd: !!row.cancel_at_period_end,
         stripePriceId: row.stripe_price_id,
       });
     }
@@ -73,13 +68,19 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const hasProAccess = entitlement.status === 'active' || entitlement.status === 'trialing';
+  // £16 one-time purchase = lifetime access. A Stripe price ID is only ever
+  // written to the entitlement row by the webhook after a successful checkout,
+  // so its presence is the record of a past purchase. Deliberately ignores
+  // renewal state (period end, cancel-at-period-end, status) -- once paid,
+  // access never lapses.
+  const hasLifetimeAccess = entitlement.tier !== 'free' && !!entitlement.stripePriceId;
+  const hasProAccess = hasLifetimeAccess || entitlement.status === 'trialing';
   const trialDaysLeft = entitlement.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(entitlement.trialEndsAt).getTime() - Date.now()) / 86_400_000))
     : null;
 
   return (
-    <EntitlementContext.Provider value={{ entitlement, hasProAccess, trialDaysLeft, loading, refetch }}>
+    <EntitlementContext.Provider value={{ entitlement, hasProAccess, hasLifetimeAccess, trialDaysLeft, loading, refetch }}>
       {children}
     </EntitlementContext.Provider>
   );
