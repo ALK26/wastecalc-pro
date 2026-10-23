@@ -428,6 +428,19 @@ export const FREQUENCY_MULTIPLIERS: Record<CollectionFrequency, number> = {
   on_demand: 1.0,       // on-demand counts as 1 collection
 };
 
+// Display names for each schedule, in the order they appear in the picker.
+export const FREQUENCY_LABELS: Record<CollectionFrequency, string> = {
+  on_demand: 'On Demand',
+  five_days_a_week: 'Five Days a Week',
+  three_times_weekly: 'Three Times Weekly',
+  twice_weekly: 'Twice Weekly',
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  every_three_weeks: 'Every Three Weeks',
+  four_weekly: 'Four Weekly',
+  monthly: 'Monthly',
+};
+
 export const DEFAULT_OVERWEIGHT_SURCHARGE = 0.20; // £0.20 per kg
 
 export function getContainerSpec(type: ContainerType, size: string): ContainerSpec {
@@ -634,6 +647,22 @@ export function withBlankQuoteFigures(config: PricingConfig): PricingConfig {
     skipsExcessRate: 0,
     skipsMonthlyRental: 0,
   };
+}
+
+// A basket stream being edited stays in the basket; the editor works on a
+// copy, and `stash` holds whatever the editor had before Edit was clicked so
+// Save or Cancel can put it back.
+export interface StreamEdit {
+  index: number;
+  stash: PricingConfig;
+}
+
+// Keeps an in-progress edit pointing at the right stream after a removal.
+// Removing the stream being edited ends the edit (returns null).
+export function editAfterStreamRemoved(edit: StreamEdit | null, removedIndex: number): StreamEdit | null {
+  if (!edit) return null;
+  if (removedIndex === edit.index) return null;
+  return removedIndex < edit.index ? { ...edit, index: edit.index - 1 } : edit;
 }
 
 export type StreamAddCheck = { ok: true; reason?: undefined } | { ok: false; reason: string };

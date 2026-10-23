@@ -4,7 +4,7 @@
  */
 
 import { jsPDF } from 'jspdf';
-import { PricingConfig, CalculationResult, WASTE_TYPES, getContainerSpec, SKIPS_RORO_SPECS } from '../types';
+import { PricingConfig, CalculationResult, WASTE_TYPES, getContainerSpec, SKIPS_RORO_SPECS, FREQUENCY_LABELS } from '../types';
 
 interface QuotePDFData {
   customerName: string; // shown on the document as "Site"
@@ -102,7 +102,7 @@ export function generateESGReportPDF(data: ESGReportData): void {
   const summaryRows: [string, string][] = [
     ['Material type', wasteSpec.label],
     ['Container', `${config.quantity} x ${spec.volumeLabel || config.selectedSize} (${config.containerType.toUpperCase()})`],
-    ['Collection frequency', config.frequency.replace(/_/g, ' ')],
+    ['Collection frequency', FREQUENCY_LABELS[config.frequency] ?? config.frequency],
     ['Estimated monthly weight', `${result.totalWeightKgPerMonth.toFixed(0)} kg`],
   ];
   summaryRows.forEach(([label, value]) => {
@@ -325,7 +325,7 @@ export function generateQuotePDF(data: QuotePDFData): void {
     { label: 'Container Class', val: typeLabel },
     { label: 'Container Size', val: spec.volumeLabel || config.selectedSize },
     { label: 'Active Quantity', val: `${config.quantity} unit(s)` },
-    { label: 'Collection Frequency', val: config.frequency.toUpperCase() + ` (${result.collectionsPerMonth.toFixed(2)} schedule lifts/month)` },
+    { label: 'Collection Frequency', val: `${FREQUENCY_LABELS[config.frequency] ?? config.frequency} (${result.collectionsPerMonth.toFixed(2)} lifts/month)` },
     { label: 'Material Managed', val: `${wasteLabel} (Recycling Rate: ${recyclingPercentageStr})` },
     { label: 'Avg Est. Load Weight', val: `${config.estimatedWeight} kg per lift per container` },
   ];

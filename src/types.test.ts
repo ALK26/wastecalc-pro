@@ -6,6 +6,8 @@ import {
   getContainerSpec,
   canAddStreamToBasket,
   withBlankQuoteFigures,
+  editAfterStreamRemoved,
+  FREQUENCY_LABELS,
   FREQUENCY_MULTIPLIERS,
   WASTE_TYPES,
 } from './types';
@@ -240,6 +242,34 @@ describe('withBlankQuoteFigures', () => {
       expect(r.totalWeightKgPerMonth).toBe(0);
       expect(Number.isNaN(r.co2SavedKgPerMonth)).toBe(false);
     }
+  });
+});
+
+describe('FREQUENCY_LABELS', () => {
+  it('has a readable label for every schedule', () => {
+    expect(Object.keys(FREQUENCY_LABELS).sort()).toEqual(Object.keys(FREQUENCY_MULTIPLIERS).sort());
+    expect(FREQUENCY_LABELS.five_days_a_week).toBe('Five Days a Week');
+    for (const label of Object.values(FREQUENCY_LABELS)) expect(label).not.toContain('_');
+  });
+});
+
+describe('editAfterStreamRemoved', () => {
+  const edit = { index: 2, stash: eurobin() };
+
+  it('keeps no edit when there was none', () => {
+    expect(editAfterStreamRemoved(null, 0)).toBeNull();
+  });
+
+  it('ends the edit when the edited stream is removed', () => {
+    expect(editAfterStreamRemoved(edit, 2)).toBeNull();
+  });
+
+  it('shifts the index when an earlier stream is removed', () => {
+    expect(editAfterStreamRemoved(edit, 0)).toEqual({ ...edit, index: 1 });
+  });
+
+  it('leaves the index alone when a later stream is removed', () => {
+    expect(editAfterStreamRemoved(edit, 3)).toBe(edit);
   });
 });
 

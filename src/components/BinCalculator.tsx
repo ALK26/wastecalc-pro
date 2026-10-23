@@ -38,7 +38,10 @@ import {
   formatCurrency,
   aggregateQuoteStreams,
   canAddStreamToBasket,
-  withBlankQuoteFigures
+  withBlankQuoteFigures,
+  FREQUENCY_LABELS,
+  FREQUENCY_MULTIPLIERS,
+  CollectionFrequency
 } from '../types';
 import NumberInput from './NumberInput';
 import ContainerVisualizer from './ContainerVisualizer';
@@ -50,6 +53,11 @@ interface BinCalculatorProps {
   onProceedToProposal?: () => void;
   quoteStreams?: PricingConfig[];
   onUpdateStreams?: (streams: PricingConfig[]) => void;
+  editingStreamIndex?: number | null;
+  onEditStream?: (index: number) => void;
+  onSaveStreamEdit?: () => void;
+  onCancelStreamEdit?: () => void;
+  onRemoveStream?: (index: number) => void;
   onNewQuote?: () => void;
   onQuickSave?: () => void;
   quickSaving?: boolean;
@@ -64,6 +72,11 @@ export default function BinCalculator({
   onProceedToProposal,
   quoteStreams = [],
   onUpdateStreams,
+  editingStreamIndex = null,
+  onEditStream,
+  onSaveStreamEdit,
+  onCancelStreamEdit,
+  onRemoveStream,
   onNewQuote,
   onQuickSave,
   quickSaving = false,
@@ -77,32 +90,25 @@ export default function BinCalculator({
   const spec = getContainerSpec(config.containerType, config.selectedSize);
   const activeWaste = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
 
-  // Multi-stream solution helpers
-  const addCheck = canAddStreamToBasket(quoteStreams, config);
+  // Multi-stream solution helpers. While a basket stream is being edited,
+  // the primary action saves it back in place instead of adding a new one,
+  // and the currency check ignores the stream being replaced.
+  const isEditingStream = editingStreamIndex !== null;
+  const addCheck = canAddStreamToBasket(
+    isEditingStream ? quoteStreams.filter((_, i) => i !== editingStreamIndex) : quoteStreams,
+    config
+  );
   const addBlockedReason = addCheck.reason ?? null;
 
   const handleAddStreamToQuote = () => {
-    if (onUpdateStreams && addCheck.ok) {
+    if (!addCheck.ok) return;
+    if (isEditingStream) {
+      onSaveStreamEdit?.();
+    } else if (onUpdateStreams) {
       onUpdateStreams([...quoteStreams, { ...config }]);
     }
   };
-
-  const handleRemoveStreamFromQuote = (index: number) => {
-    if (onUpdateStreams) {
-      const updated = [...quoteStreams];
-      updated.splice(index, 1);
-      onUpdateStreams(updated);
-    }
-  };
-
-  const handleEditStreamFromQuote = (index: number) => {
-    if (onUpdateStreams) {
-      onChangeConfig({ ...quoteStreams[index] });
-      const updated = [...quoteStreams];
-      updated.splice(index, 1);
-      onUpdateStreams(updated);
-    }
-  };
+  const addStreamLabel = isEditingStream ? 'Save Stream Changes' : '+ Add Stream';
 
   const calculateAggregatedTotals = () => {
     const agg = aggregateQuoteStreams(quoteStreams);
@@ -220,7 +226,7 @@ export default function BinCalculator({
             </span>
             <div>
               <h3 className={`text-sm font-black uppercase tracking-wider font-mono leading-none ${quoteStreams.length > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
-                Total Waste Solutions Solution Basket
+                Waste Solutions Basket
               </h3>
               <p className="text-xs text-slate-400 mt-1">
                 Bundle multiple waste streams (e.g. general, recycling, food) into a single consolidated B2B solution
@@ -265,6 +271,32 @@ export default function BinCalculator({
           </div>
         ) : (
           <>
+            {isEditingStream && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
+                <p className="text-[11px] text-amber-200">
+                  Editing stream {editingStreamIndex + 1}. The basket keeps the original until you save.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddStreamToQuote}
+                    disabled={!!addBlockedReason}
+                    title={addBlockedReason ?? undefined}
+                    className="text-[10px] font-bold uppercase px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onCancelStreamEdit}
+                    className="text-[10px] font-bold uppercase px-2.5 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* List of active streams */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
               {quoteStreams.map((stream, idx) => {
@@ -272,16 +304,19 @@ export default function BinCalculator({
                 const specItem = getContainerSpec(stream.containerType, stream.selectedSize);
                 const wasteSpec = WASTE_TYPES[stream.wasteType];
                 return (
-                  <div key={idx} className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3 group">
+                  <div key={idx} className={`bg-slate-950 border p-3 rounded-xl flex items-center justify-between gap-3 group ${editingStreamIndex === idx ? 'border-amber-400/70' : 'border-slate-800'}`}>
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
                         <span className="text-xs font-black text-white">{wasteSpec?.label || 'General Waste'}</span>
+                        {editingStreamIndex === idx && (
+                          <span className="text-[9px] font-mono font-bold uppercase text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 rounded">Editing</span>
+                        )}
                       </div>
                       <p className="text-[10px] text-slate-400 leading-tight">
                         {stream.quantity}x {specItem.sizeName} {stream.containerType === 'eurobin' ? 'Euro Bin' : stream.containerType === 'rel' ? 'REL' : 'Skip/RoRo'}
                         <span className="mx-1 text-slate-600">|</span>
-                        {stream.frequency.replace('_', ' ').replace('_', ' ')}
+                        {FREQUENCY_LABELS[stream.frequency] ?? stream.frequency}
                       </p>
                       <p className="text-[10px] text-emerald-400 font-mono font-semibold">
                         Monthly Cost: {formatCurrency(streamResult.totalMonthlyCost, stream.currency)}
@@ -291,15 +326,16 @@ export default function BinCalculator({
                     <div className="flex items-center gap-1.5 opacity-85 group-hover:opacity-100 transition">
                       <button
                         type="button"
-                        onClick={() => handleEditStreamFromQuote(idx)}
-                        title="Load and edit stream"
-                        className="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 rounded transition cursor-pointer"
+                        onClick={() => onEditStream?.(idx)}
+                        disabled={isEditingStream}
+                        title={isEditingStream ? 'Save or cancel the stream you are editing first' : 'Load and edit stream'}
+                        className="p-1.5 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-300 hover:text-emerald-400 rounded transition cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleRemoveStreamFromQuote(idx)}
+                        onClick={() => onRemoveStream?.(idx)}
                         title="Remove stream"
                         className="p-1.5 hover:bg-rose-950/50 text-slate-400 hover:text-rose-400 rounded transition cursor-pointer"
                       >
@@ -316,13 +352,13 @@ export default function BinCalculator({
               <div className="space-y-1">
                 <span className="text-[9px] uppercase tracking-wider text-slate-400 font-mono">Consolidated Monthly</span>
                 <p className="text-lg font-black text-emerald-400 font-mono">
-                  {formatCurrency(aggTotals.totalMonthly, config.currency)}
+                  {formatCurrency(aggTotals.totalMonthly, quoteStreams[0].currency)}
                 </p>
               </div>
               <div className="space-y-1 border-l border-slate-800 pl-3">
                 <span className="text-[9px] uppercase tracking-wider text-slate-400 font-mono">Projected Annual</span>
                 <p className="text-lg font-black text-white font-mono">
-                  {formatCurrency(aggTotals.totalAnnual, config.currency)}
+                  {formatCurrency(aggTotals.totalAnnual, quoteStreams[0].currency)}
                 </p>
               </div>
               <div className="space-y-1 border-l border-slate-800 pl-3">
@@ -474,7 +510,7 @@ export default function BinCalculator({
                         : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'
                     }`}
                   >
-                    {specItem.isRoro ? 'RoRo ' : 'Skip '}{specItem.volumeLabel.split(' ')[0]}y
+                    {specItem.isRoro ? 'RoRo ' : 'Skip '}{specItem.volumeLabel.split(' ')[0]} yd
                   </button>
                 );
               })
@@ -699,17 +735,15 @@ export default function BinCalculator({
               onChange={(e) => updateVal('frequency', e.target.value as any)}
               className="w-full h-10 bg-slate-50 text-xs border border-slate-200 rounded-lg px-3 font-semibold text-slate-700 outline-none focus:border-emerald-500 transition cursor-pointer"
             >
-              {config.containerType === 'skips_roro' && (
-                <option value="on_demand">On-Demand / Ad Hoc (One-off collection only)</option>
-              )}
-              <option value="five_days_a_week">5 days a week (~21.67/mo)</option>
-              <option value="three_times_weekly">3 times weekly (~13.00/mo)</option>
-              <option value="twice_weekly">Twice weekly (~8.67/mo)</option>
-              <option value="weekly">Weekly collections (~4.33/mo)</option>
-              <option value="fortnightly">Fortnightly collections (~2.17/mo)</option>
-              <option value="every_three_weeks">Every 3 weeks (~1.44/mo)</option>
-              <option value="four_weekly">4 Weekly collections (~1.08/mo)</option>
-              <option value="monthly">Monthly collections (1.00/mo)</option>
+              {(Object.keys(FREQUENCY_LABELS) as CollectionFrequency[])
+                .filter((f) => f !== 'on_demand' || config.containerType === 'skips_roro')
+                .map((f) => (
+                  <option key={f} value={f}>
+                    {f === 'on_demand'
+                      ? 'On Demand (one-off collection)'
+                      : `${FREQUENCY_LABELS[f]} (~${FREQUENCY_MULTIPLIERS[f].toFixed(2)} lifts/mo)`}
+                  </option>
+                ))}
             </select>
           </div>
         </div>
@@ -736,7 +770,7 @@ export default function BinCalculator({
             className="w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer hover:shadow-emerald-500/10 active:scale-[0.98]"
           >
             <Plus className="w-4 h-4 text-emerald-200" />
-            <span>+ Add Stream</span>
+            <span>{addStreamLabel}</span>
           </button>
         </div>
 
@@ -847,7 +881,7 @@ export default function BinCalculator({
                 </div>
               </div>
               <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Estimated Loading Weight per Lift</span>
+                <span className="font-semibold text-slate-600">Estimated Load Weight (per Container Lift)</span>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <NumberInput
                     integer
@@ -858,20 +892,30 @@ export default function BinCalculator({
                   <span className="text-[10px] text-slate-400">kg</span>
                 </div>
               </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Allocated Weight Allowance (per lift)</span>
+              {/* Weight allowance: the contract term the excess charge is
+                  measured against, so it gets its own highlighted panel. */}
+              <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="p-2 bg-white border border-emerald-100 rounded-lg">
+                    <ScaleIcon className="w-4 h-4 text-emerald-600" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Allocated Weight Allowance (per Container Lift)</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Weight included in each lift before the excess weight charge applies.</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <NumberInput
                     integer
                     value={config.weightAllowance}
                     onValueChange={(v) => updateVal('weightAllowance', v)}
-                    className={numberBoxClass}
+                    className={`${numberBoxClass} w-28 h-9 text-sm bg-white border-emerald-300`}
                   />
-                  <span className="text-[10px] text-slate-400">kg</span>
+                  <span className="text-xs text-slate-500">kg</span>
                 </div>
               </div>
               <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Overweight Surcharge Surcharged</span>
+                <span className="font-semibold text-slate-600">Excess weight / overweight charge</span>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
                   <NumberInput
@@ -945,7 +989,7 @@ export default function BinCalculator({
 
               <div className="flex justify-between text-xs text-slate-400">
                 <span>
-                  {config.containerType === 'skips_roro' ? 'Excess Tonnage Surcharges' : 'Estimated Excess Weight Surcharge'}
+                  {config.containerType === 'skips_roro' ? 'Excess tonnage charge' : 'Excess weight / overweight charge'}
                 </span>
                 <span className={`font-bold font-mono ${isOverweight ? 'text-rose-400' : 'text-slate-100'}`}>
                   {formatCurrency(result.monthlyOverweightCost, config.currency)}
@@ -1010,9 +1054,11 @@ export default function BinCalculator({
                 <div>
                   <span className="font-bold block text-rose-200">Excess Weight Advisory</span>
                   <span className="leading-relaxed">
-                    Estimated weight empty of <strong>{config.estimatedWeight} kg</strong> exceeds the base threshold of{' '}
-                    <strong>{config.containerType === 'skips_roro' ? `${config.skipsMinTonnage * 1000} kg` : `${config.weightAllowance} kg`}</strong> per lift. Your operation incurs a{' '}
-                    <strong>{formatCurrency(config.containerType === 'skips_roro' ? config.skipsExcessRate : (config.overweightSurcharge * activeWaste.surchargeMultiplier), config.currency)}</strong> surcharge per overweight unit metric.
+                    Estimated load weight of <strong>{config.estimatedWeight} kg</strong> exceeds the{' '}
+                    {config.containerType === 'skips_roro' ? 'minimum tonnage' : 'allocated weight allowance'} of{' '}
+                    <strong>{config.containerType === 'skips_roro' ? `${config.skipsMinTonnage * 1000} kg` : `${config.weightAllowance} kg`}</strong> per container lift. Excess is charged at{' '}
+                    <strong>{formatCurrency(config.containerType === 'skips_roro' ? config.skipsExcessRate : (config.overweightSurcharge * activeWaste.surchargeMultiplier), config.currency)}</strong>{' '}
+                    {config.containerType === 'skips_roro' ? 'per tonne' : 'per kg'}.
                   </span>
                 </div>
               </div>
@@ -1023,7 +1069,7 @@ export default function BinCalculator({
           <div className="mt-8 pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono">
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{config.frequency.toUpperCase()} Schedule empty</span>
+              <span>{FREQUENCY_LABELS[config.frequency]} collections</span>
             </span>
             <span>Tax Category: Standard 20% VAT</span>
           </div>
@@ -1039,7 +1085,7 @@ export default function BinCalculator({
                 className="disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-3 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer active:scale-[0.98]"
               >
                 <Layers className="w-4 h-4 text-emerald-200" />
-                <span>+ Add Stream</span>
+                <span>{addStreamLabel}</span>
               </button>
               {onQuickSave && (
                 <button
@@ -1097,7 +1143,7 @@ export default function BinCalculator({
           className="flex-1 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 px-2 rounded-xl text-[10px] uppercase tracking-wide flex items-center justify-center gap-1 cursor-pointer active:scale-[0.98]"
         >
           <Layers className="w-3.5 h-3.5" />
-          Add Stream
+          {isEditingStream ? 'Save Changes' : 'Add Stream'}
         </button>
         {onQuickSave && (
           <button

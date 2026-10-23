@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, ArrowRight, CheckCircle2, Copy, Edit2, Loader2, FileText, Send, Download } from 'lucide-react';
-import { PricingConfig, CalculationResult, getContainerSpec, WASTE_TYPES, formatCurrency, calculatePricing } from '../types';
+import { PricingConfig, CalculationResult, getContainerSpec, WASTE_TYPES, formatCurrency, calculatePricing, FREQUENCY_LABELS } from '../types';
 
 interface LeadFormProps {
   config: PricingConfig;
@@ -68,7 +68,7 @@ export default function LeadForm({
           binType: s.containerType,
           sizeLabel: sSpec.volumeLabel || s.selectedSize,
           quantity: s.quantity,
-          frequency: s.frequency,
+          frequency: FREQUENCY_LABELS[s.frequency] ?? s.frequency,
           monthlyCost: sRes.totalMonthlyCost,
           wasteTypeLabel: WASTE_TYPES[s.wasteType]?.label || 'General Waste',
           recyclingRateStr: `${(sRes.recyclingRate * 100).toFixed(0)}%`,
@@ -253,7 +253,7 @@ export default function LeadForm({
                         <span className="font-mono text-emerald-600">{formatCurrency(sResult.totalMonthlyCost, s.currency)}</span>
                       </div>
                       <p className="text-[9px] text-slate-400">
-                        {s.quantity}x {sSpec.sizeName} ({sSpec.volumeLabel}) | {s.frequency.replace('_', ' ').replace('_', ' ')}
+                        {s.quantity}x {sSpec.sizeName} ({sSpec.volumeLabel}) | {FREQUENCY_LABELS[s.frequency] ?? s.frequency}
                       </p>
                     </div>
                   );

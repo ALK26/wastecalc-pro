@@ -27,7 +27,9 @@ import {
 import { 
   PricingConfig, 
   calculatePricing, 
-  getContainerSpec 
+  getContainerSpec,
+  StreamEdit,
+  editAfterStreamRemoved
 } from './types';
 // BinCalculator is the default/first tab, so it loads eagerly.
 // The other tabs (and the PDF generator, which pulls in jsPDF + html2canvas)
@@ -139,6 +141,55 @@ export default function CalculatorApp() {
     } catch {}
   }, [quoteStreams]);
 
+  // Basket stream currently open in the editor (if any). Persisted with the
+  // rest of the draft so a refresh mid-edit can still Save or Cancel.
+  const [streamEdit, setStreamEdit] = useState<StreamEdit | null>(() => {
+    try {
+      const saved = localStorage.getItem('wcp_draft_edit');
+      const parsed = saved ? JSON.parse(saved) : null;
+      return parsed && Number.isInteger(parsed.index) && parsed.index < quoteStreams.length && parsed.stash
+        ? { index: parsed.index, stash: { ...DEFAULT_CALCULATOR_CONFIG, ...parsed.stash } }
+        : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (streamEdit) localStorage.setItem('wcp_draft_edit', JSON.stringify(streamEdit));
+      else localStorage.removeItem('wcp_draft_edit');
+    } catch {}
+  }, [streamEdit]);
+
+  // Edit loads a copy of the stream into the editor; the basket keeps the
+  // original until Save. Whatever was in the editor is stashed and restored
+  // on Save or Cancel.
+  const handleEditStream = (index: number) => {
+    if (streamEdit || !quoteStreams[index]) return;
+    setStreamEdit({ index, stash: calculatorConfig });
+    setCalculatorConfig({ ...quoteStreams[index] });
+  };
+
+  const handleSaveStreamEdit = () => {
+    if (!streamEdit) return;
+    setQuoteStreams(quoteStreams.map((s, i) => (i === streamEdit.index ? { ...calculatorConfig } : s)));
+    setCalculatorConfig(streamEdit.stash);
+    setStreamEdit(null);
+  };
+
+  const handleCancelStreamEdit = () => {
+    if (!streamEdit) return;
+    setCalculatorConfig(streamEdit.stash);
+    setStreamEdit(null);
+  };
+
+  const handleRemoveStream = (index: number) => {
+    if (streamEdit?.index === index) setCalculatorConfig(streamEdit.stash);
+    setStreamEdit(editAfterStreamRemoved(streamEdit, index));
+    setQuoteStreams(quoteStreams.filter((_, i) => i !== index));
+  };
+
   const { user, isAnonymous } = useAuth();
   const { hasProAccess, trialDaysLeft, entitlement, refetch: refetchEntitlement } = useEntitlement();
 
@@ -177,6 +228,7 @@ export default function CalculatorApp() {
   // one being actively edited, and the rest as the "portfolio" streams.
   const handleLoadStreams = (streams: PricingConfig[]) => {
     if (streams.length === 0) return;
+    setStreamEdit(null);
     setQuoteStreams(streams);
     setCalculatorConfig({ ...streams[0] });
     setActiveTab('calculator');
@@ -217,11 +269,13 @@ export default function CalculatorApp() {
   // localStorage draft, so the old setup doesn't just reappear on refresh.
   // Doesn't touch anything already saved to Saved Portfolio.
   const handleNewQuote = () => {
+    setStreamEdit(null);
     setQuoteStreams([]);
     setCalculatorConfig(DEFAULT_CALCULATOR_CONFIG);
     try {
       localStorage.removeItem('wcp_draft_config');
       localStorage.removeItem('wcp_draft_streams');
+      localStorage.removeItem('wcp_draft_edit');
     } catch {}
   };
 
@@ -476,6 +530,11 @@ export default function CalculatorApp() {
                 onProceedToProposal={() => setActiveTab('lead')}
                 quoteStreams={quoteStreams}
                 onUpdateStreams={setQuoteStreams}
+                editingStreamIndex={streamEdit?.index ?? null}
+                onEditStream={handleEditStream}
+                onSaveStreamEdit={handleSaveStreamEdit}
+                onCancelStreamEdit={handleCancelStreamEdit}
+                onRemoveStream={handleRemoveStream}
                 onNewQuote={handleNewQuote}
                 onQuickSave={handleQuickSave}
                 quickSaving={quickSaving}
