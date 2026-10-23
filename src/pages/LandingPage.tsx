@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { Link } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
   Calculator,
@@ -20,6 +20,13 @@ import ProductTourCarousel from '../components/ProductTourCarousel';
 const PricingSection = lazy(() => import('../components/PricingSection'));
 
 export default function LandingPage() {
+  // Client-side redirects to /#pricing (e.g. from the /app paywall) don't
+  // trigger the browser's native jump-to-anchor, so do it here.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
+
   return (
     <div className="min-h-screen bg-white font-sans">
       {/* Nav */}
@@ -33,8 +40,8 @@ export default function LandingPage() {
             <Link to="/contact" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition">
               Contact
             </Link>
-            <Link to="/app" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition">
-              Sign In
+            <Link to="/app?signin=1" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition">
+              Customer Sign In
             </Link>
             <a
               href="#pricing"
@@ -67,12 +74,12 @@ export default function LandingPage() {
             Get Lifetime Access — £16
             <ArrowRight className="w-4 h-4 text-emerald-400" />
           </a>
-          <Link
-            to="/app"
+          <a
+            href="#how-it-works"
             className="px-6 py-3.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition"
           >
-            Open Calculator
-          </Link>
+            See how it works
+          </a>
         </div>
         <p className="text-[11px] text-slate-400 mt-4">
           Built for facilities managers and procurement teams at UK businesses.

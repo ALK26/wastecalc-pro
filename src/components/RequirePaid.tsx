@@ -1,28 +1,85 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, KeyRound, Loader2, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useEntitlement } from '../hooks/useEntitlement';
 
-// Gates the entire calculator app -- unlike UpgradeGate (which checks Pro
-// entitlement for individual premium features), this only checks whether
-// someone is signed in at all. Anyone can sign up; premium features still
-// need the £16 lifetime purchase. This is the "wall" between the public marketing site
-// and the actual product.
+// How long to wait for the Stripe webhook after a successful checkout before
+// telling the buyer it's still processing (instead of bouncing them).
+const CONFIRM_TIMEOUT_MS = 30_000;
+const CONFIRM_POLL_MS = 2_000;
+
+// Gates the entire calculator app behind the £16 lifetime purchase. Unpaid
+// and anonymous sessions are sent to the landing page's pricing section.
+// Two exceptions keep paying customers from being locked out:
+// - ?checkout=success: just back from Stripe, the webhook may not have
+//   landed yet -- poll entitlement and show a "confirming" screen.
+// - ?signin=1: an existing customer on a new browser (who has a fresh
+//   anonymous session) signs in with their email to reach their purchase.
 //
 // Uses a magic link for now (Supabase's default email template doesn't
 // expose a 6-digit code without custom SMTP, which needs a verified domain
 // -- see project notes). The code-entry step is still wired up and ready:
 // once custom SMTP is live and the template includes {{ .Token }}, this
 // becomes the low-friction primary path with the link as a fallback.
-export default function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading, signInWithEmail, verifyCode } = useAuth();
+export default function RequirePaid({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading, isAnonymous, signInWithEmail, verifyCode } = useAuth();
+  const { hasProAccess, loading: entitlementLoading, refetch } = useEntitlement();
+  const [searchParams] = useSearchParams();
+  const justPaid = searchParams.get('checkout') === 'success';
+  const wantsSignIn = searchParams.get('signin') === '1';
+
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [confirmTimedOut, setConfirmTimedOut] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    if (!justPaid || hasProAccess) return;
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      if (Date.now() - startedAt > CONFIRM_TIMEOUT_MS) {
+        setConfirmTimedOut(true);
+        clearInterval(id);
+        return;
+      }
+      refetch();
+    }, CONFIRM_POLL_MS);
+    return () => clearInterval(id);
+  }, [justPaid, hasProAccess, refetch]);
+
+  if (hasProAccess && !entitlementLoading) {
+    return <>{children}</>;
+  }
+
+  if (justPaid) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-sm text-center">
+          {confirmTimedOut ? (
+            <>
+              <h1 className="text-lg font-bold font-display text-slate-900 mb-2">Your payment is still processing</h1>
+              <p className="text-xs text-slate-500 mb-5">
+                Stripe hasn't confirmed it to us yet. Refresh this page in a minute — if access still isn't unlocked,
+                contact us and we'll sort it out straight away.
+              </p>
+              <Link to="/contact" className="text-xs font-bold text-slate-900 underline">Contact us</Link>
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-6 h-6 text-emerald-500 animate-spin mx-auto mb-4" />
+              <h1 className="text-lg font-bold font-display text-slate-900 mb-1">Confirming your payment…</h1>
+              <p className="text-xs text-slate-500">This usually takes a few seconds.</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading || entitlementLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
@@ -30,8 +87,8 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     );
   }
 
-  if (user) {
-    return <>{children}</>;
+  if (!wantsSignIn || (user && !isAnonymous)) {
+    return <Navigate to="/#pricing" replace />;
   }
 
   const handleSendCode = async (e: React.FormEvent) => {
@@ -54,7 +111,8 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     setSubmitting(false);
     if (error) setAuthError(error);
     // On success, onAuthStateChange fires and this component re-renders
-    // with `user` set -- no manual redirect needed, we're already on /app.
+    // with the signed-in user: the app opens if that account has lifetime
+    // access, otherwise the redirect above sends them to pricing.
   };
 
   return (

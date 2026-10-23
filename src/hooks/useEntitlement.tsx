@@ -35,15 +35,20 @@ const EntitlementContext = createContext<EntitlementContextValue | undefined>(un
 export function EntitlementProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [entitlement, setEntitlement] = useState<Entitlement>(FREE_ENTITLEMENT);
-  const [loading, setLoading] = useState(true);
+  // Which user the current `entitlement` belongs to. Right after a sign-in
+  // there's a render where `user` is new but the entitlement is still the
+  // previous session's; treating that as loaded would let the paywall act on
+  // stale data (e.g. bounce a paying customer who just signed in). A refetch
+  // for the SAME user keeps showing the current value instead of flipping
+  // back to loading, so gates don't unmount the app mid-session.
+  const [resolvedFor, setResolvedFor] = useState<string | null | undefined>(undefined);
 
   const refetch = useCallback(async () => {
     if (!user) {
       setEntitlement(FREE_ENTITLEMENT);
-      setLoading(false);
+      setResolvedFor(null);
       return;
     }
-    setLoading(true);
     const { data, error } = await supabase.rpc('get_my_entitlement');
     if (error || !data || data.length === 0) {
       setEntitlement(FREE_ENTITLEMENT);
@@ -55,7 +60,7 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
         stripePriceId: row.stripe_price_id,
       });
     }
-    setLoading(false);
+    setResolvedFor(user.id);
   }, [user]);
 
   useEffect(() => {
@@ -71,9 +76,10 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
   // so one purchase unlocks everything at once. There is no free trial:
   // legacy 'trialing' rows (no price ID) grant nothing.
   const hasProAccess = entitlement.tier !== 'free' && !!entitlement.stripePriceId;
+  const isLoading = resolvedFor !== (user?.id ?? null);
 
   return (
-    <EntitlementContext.Provider value={{ entitlement, hasProAccess, loading, refetch }}>
+    <EntitlementContext.Provider value={{ entitlement, hasProAccess, loading: isLoading, refetch }}>
       {children}
     </EntitlementContext.Provider>
   );

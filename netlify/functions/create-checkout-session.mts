@@ -88,8 +88,9 @@ export default async (req: Request) => {
       payment_intent_data: {
         metadata: { supabase_user_id: user.id, product_key: LIFETIME_PRODUCT_KEY },
       },
-      success_url: `${origin}/?checkout=success`,
-      cancel_url: `${origin}/?checkout=cancelled`,
+      // /app waits for the webhook on ?checkout=success before opening.
+      success_url: `${origin}/app?checkout=success`,
+      cancel_url: `${origin}/#pricing`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
