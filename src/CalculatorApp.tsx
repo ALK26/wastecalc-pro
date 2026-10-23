@@ -39,6 +39,7 @@ import BinCalculator from './components/BinCalculator';
 import UpgradeGate from './components/UpgradeGate';
 import { useAuth } from './hooks/useAuth';
 import { useEntitlement } from './hooks/useEntitlement';
+import { useDebouncedDraftSave } from './hooks/useDebouncedDraftSave';
 import { supabase } from './lib/supabaseClient';
 const ComparisonMode = lazy(() => import('./components/ComparisonMode'));
 const LeadForm = lazy(() => import('./components/LeadForm'));
@@ -127,19 +128,9 @@ export default function CalculatorApp() {
     }
   });
 
-  // The draft is a convenience backup: if storage is full or blocked
-  // (private browsing, quota), keep working without it rather than crash.
-  useEffect(() => {
-    try {
-      localStorage.setItem('wcp_draft_config', JSON.stringify(calculatorConfig));
-    } catch {}
-  }, [calculatorConfig]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('wcp_draft_streams', JSON.stringify(quoteStreams));
-    } catch {}
-  }, [quoteStreams]);
+  // Draft backup, debounced so typing stays smooth (see the hook).
+  useDebouncedDraftSave('wcp_draft_config', calculatorConfig);
+  useDebouncedDraftSave('wcp_draft_streams', quoteStreams);
 
   // Basket stream currently open in the editor (if any). Persisted with the
   // rest of the draft so a refresh mid-edit can still Save or Cancel.
@@ -155,12 +146,7 @@ export default function CalculatorApp() {
     }
   });
 
-  useEffect(() => {
-    try {
-      if (streamEdit) localStorage.setItem('wcp_draft_edit', JSON.stringify(streamEdit));
-      else localStorage.removeItem('wcp_draft_edit');
-    } catch {}
-  }, [streamEdit]);
+  useDebouncedDraftSave('wcp_draft_edit', streamEdit);
 
   // Edit loads a copy of the stream into the editor; the basket keeps the
   // original until Save. Whatever was in the editor is stashed and restored

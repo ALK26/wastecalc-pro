@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { PricingConfig, getContainerSpec, WASTE_TYPES, SkipsRoroSize, RelSize, REL_SPECS } from '../types';
 
 interface ContainerVisualizerProps {
   config: PricingConfig;
 }
 
-export default function ContainerVisualizer({ config }: ContainerVisualizerProps) {
+function ContainerVisualizer({ config }: ContainerVisualizerProps) {
   const spec = getContainerSpec(config.containerType, config.selectedSize);
   const wasteSpec = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
 
@@ -424,3 +424,5 @@ export default function ContainerVisualizer({ config }: ContainerVisualizerProps
   );
 }
 
+// Memoized: re-renders only when its props change, not on every parent render.
+export default memo(ContainerVisualizer);

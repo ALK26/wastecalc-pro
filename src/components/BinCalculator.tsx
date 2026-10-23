@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useDeferredValue } from 'react';
 import { motion } from 'motion/react';
 import { 
   Trash, 
@@ -44,8 +44,29 @@ import {
   CollectionFrequency
 } from '../types';
 import NumberInput from './NumberInput';
+import RateInput, { numberBoxClass } from './RateInput';
 import ContainerVisualizer from './ContainerVisualizer';
 import CircularityDashboard from './CircularityDashboard';
+
+const CONTAINER_CLASSES: { type: ContainerType; id: string; label: string; description: string; Icon: typeof Trash }[] = [
+  { type: 'eurobin', id: 'select_eurobin_class', label: 'Euro Bins', description: 'Mobile Commercial Bins', Icon: Trash },
+  { type: 'rel', id: 'select_rel_class', label: 'RELs / FELs', description: 'Stationary Bulk Containers', Icon: Layers },
+  { type: 'skips_roro', id: 'select_skips_class', label: 'Skips / RoRos', description: 'Roll-on Roll-off Equipment', Icon: Truck },
+];
+
+// Size buttons for the selected container class.
+function sizeOptions(type: ContainerType): { size: string; label: string }[] {
+  if (type === 'eurobin') {
+    return Object.entries(EUROBIN_SPECS).map(([size, s]) => ({ size, label: `${size} (${s.volumeLabel})` }));
+  }
+  if (type === 'rel') {
+    return Object.entries(REL_SPECS).map(([size, s]) => ({ size, label: s.sizeName || size }));
+  }
+  return Object.entries(SKIPS_RORO_SPECS).map(([size, s]) => ({
+    size,
+    label: `${s.isRoro ? 'RoRo' : 'Skip'} ${s.volumeLabel.split(' ')[0]} yd`,
+  }));
+}
 
 interface BinCalculatorProps {
   config: PricingConfig;
@@ -87,6 +108,11 @@ export default function BinCalculator({
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const result = calculatePricing(config);
+  // The ESG dashboard and visualizer are heavy (charts, SVG) and memoized;
+  // feeding them a deferred copy lets React update the input being typed
+  // in first and re-render them in the background.
+  const deferredConfig = useDeferredValue(config);
+  const deferredResult = useMemo(() => calculatePricing(deferredConfig), [deferredConfig]);
   const spec = getContainerSpec(config.containerType, config.selectedSize);
   const activeWaste = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
 
@@ -160,7 +186,6 @@ export default function BinCalculator({
   };
 
   const currencySymbol = config.currency === 'GBP' ? '£' : config.currency === 'USD' ? '$' : '€';
-  const numberBoxClass = 'w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-right font-mono font-bold text-xs focus:border-emerald-500 outline-none';
 
   const isOverweight = config.containerType === 'skips_roro'
     ? config.estimatedWeight > (config.skipsMinTonnage * 1000)
@@ -390,72 +415,29 @@ export default function BinCalculator({
           </label>
           <div className="grid grid-cols-3 gap-3">
             
-            {/* Euro Bins (Wheelie) */}
-            <button
-              id="select_eurobin_class"
-              onClick={() => handleTypeToggle('eurobin')}
-              className={`p-3 rounded-xl border-2 text-left transition flex flex-col gap-2 relative cursor-pointer ${
-                config.containerType === 'eurobin'
-                  ? 'border-emerald-500 bg-emerald-50/40 shadow-sm'
-                  : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-slate-100 rounded text-slate-700">
-                  <Trash className="w-4 h-4" />
-                </span>
-                <span className="text-xs font-bold text-slate-900">Euro Bins</span>
-              </div>
-              <span className="text-[10px] text-slate-400">Mobile Commercial Bins</span>
-              {config.containerType === 'eurobin' && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />
-              )}
-            </button>
-
-            {/* RELs/FELs */}
-            <button
-              id="select_rel_class"
-              onClick={() => handleTypeToggle('rel')}
-              className={`p-3 rounded-xl border-2 text-left transition flex flex-col gap-2 relative cursor-pointer ${
-                config.containerType === 'rel'
-                  ? 'border-emerald-500 bg-emerald-50/40 shadow-sm'
-                  : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-slate-100 rounded text-slate-700">
-                  <Layers className="w-4 h-4" />
-                </span>
-                <span className="text-xs font-bold text-slate-900">RELs / FELs</span>
-              </div>
-              <span className="text-[10px] text-slate-400">Stationary Bulk Containers</span>
-              {config.containerType === 'rel' && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />
-              )}
-            </button>
-
-            {/* Skips & ROROs */}
-            <button
-              id="select_skips_class"
-              onClick={() => handleTypeToggle('skips_roro')}
-              className={`p-3 rounded-xl border-2 text-left transition flex flex-col gap-2 relative cursor-pointer ${
-                config.containerType === 'skips_roro'
-                  ? 'border-emerald-500 bg-emerald-50/40 shadow-sm'
-                  : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-slate-100 rounded text-slate-700">
-                  <Truck className="w-4 h-4" />
-                </span>
-                <span className="text-xs font-bold text-slate-900">Skips / RoRos</span>
-              </div>
-              <span className="text-[10px] text-slate-400">Roll-on Roll-off Equipment</span>
-              {config.containerType === 'skips_roro' && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />
-              )}
-            </button>
-
+            {CONTAINER_CLASSES.map(({ type, id, label, description, Icon }) => (
+              <button
+                key={type}
+                id={id}
+                onClick={() => handleTypeToggle(type)}
+                className={`p-3 rounded-xl border-2 text-left transition flex flex-col gap-2 relative cursor-pointer ${
+                  config.containerType === type
+                    ? 'border-emerald-500 bg-emerald-50/40 shadow-sm'
+                    : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-slate-100 rounded text-slate-700">
+                    <Icon className="w-4 h-4" />
+                  </span>
+                  <span className="text-xs font-bold text-slate-900">{label}</span>
+                </div>
+                <span className="text-[10px] text-slate-400">{description}</span>
+                {config.containerType === type && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -465,56 +447,21 @@ export default function BinCalculator({
             2. Choose Equipment Capacity / Size
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {config.containerType === 'eurobin' && (
-              Object.keys(EUROBIN_SPECS).map((sz) => (
-                <button
-                  key={sz}
-                  onClick={() => handleSizeSelect(sz)}
-                  className={`py-2 px-1 text-xs font-bold font-mono rounded-lg border transition text-center cursor-pointer ${
-                    config.selectedSize === sz
-                      ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm'
-                      : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'
-                  }`}
-                >
-                  {sz} ({EUROBIN_SPECS[sz as any]?.volumeLabel})
-                </button>
-              ))
-            )}
-
-            {config.containerType === 'rel' && (
-              Object.keys(REL_SPECS).map((sz) => (
-                <button
-                  key={sz}
-                  onClick={() => handleSizeSelect(sz)}
-                  className={`py-2 px-1 text-xs font-bold font-mono rounded-lg border transition text-center cursor-pointer ${
-                    config.selectedSize === sz
-                      ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm'
-                      : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'
-                  }`}
-                >
-                  {REL_SPECS[sz as any]?.sizeName || sz}
-                </button>
-              ))
-            )}
-
-            {config.containerType === 'skips_roro' && (
-              Object.keys(SKIPS_RORO_SPECS).map((sz) => {
-                const specItem = SKIPS_RORO_SPECS[sz as any];
-                return (
-                  <button
-                    key={sz}
-                    onClick={() => handleSizeSelect(sz)}
-                    className={`py-2.5 px-1 text-[10px] font-bold font-mono rounded-lg border transition text-center cursor-pointer ${
-                      config.selectedSize === sz
-                        ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm'
-                        : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'
-                    }`}
-                  >
-                    {specItem.isRoro ? 'RoRo ' : 'Skip '}{specItem.volumeLabel.split(' ')[0]} yd
-                  </button>
-                );
-              })
-            )}
+            {sizeOptions(config.containerType).map(({ size, label }) => (
+              <button
+                key={size}
+                onClick={() => handleSizeSelect(size)}
+                className={`px-1 font-bold font-mono rounded-lg border transition text-center cursor-pointer ${
+                  config.containerType === 'skips_roro' ? 'py-2.5 text-[10px]' : 'py-2 text-xs'
+                } ${
+                  config.selectedSize === size
+                    ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm'
+                    : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {/* Metadata Display */}
@@ -644,18 +591,14 @@ export default function BinCalculator({
 
                 {config.customRecyclingRateEnabled && (
                   <div className="space-y-1 pl-6">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-600">Custom Recycling Rate</span>
-                      <div className="flex items-center gap-1">
-                        <NumberInput
-                          integer
-                          value={config.customRecyclingRate}
-                          onValueChange={(v) => updateVal('customRecyclingRate', Math.min(100, v))}
-                          className={`${numberBoxClass} w-16 text-emerald-600`}
-                        />
-                        <span className="text-[10px] text-slate-400">%</span>
-                      </div>
-                    </div>
+                    <RateInput
+                      label="Custom Recycling Rate"
+                      integer
+                      value={config.customRecyclingRate}
+                      onChange={(v) => updateVal('customRecyclingRate', Math.min(100, v))}
+                      suffix="%"
+                      inputClassName="w-16 text-emerald-600"
+                    />
                     <p className="text-[9px] text-slate-400 font-mono">
                       Default material standard: {(activeWaste.defaultRecyclingRate * 100).toFixed(0)}%
                     </p>
@@ -677,18 +620,14 @@ export default function BinCalculator({
 
                 {config.landfillOptionEnabled && (
                   <div className="space-y-1 pl-6">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-600">% of non-recycled waste sent to landfill</span>
-                      <div className="flex items-center gap-1">
-                        <NumberInput
-                          integer
-                          value={config.landfillRate ?? 0}
-                          onValueChange={(v) => updateVal('landfillRate', Math.min(100, v))}
-                          className={`${numberBoxClass} w-16 text-rose-600`}
-                        />
-                        <span className="text-[10px] text-slate-400">%</span>
-                      </div>
-                    </div>
+                    <RateInput
+                      label="% of non-recycled waste sent to landfill"
+                      integer
+                      value={config.landfillRate ?? 0}
+                      onChange={(v) => updateVal('landfillRate', Math.min(100, v))}
+                      suffix="%"
+                      inputClassName="w-16 text-rose-600"
+                    />
                     <p className="text-[9px] text-slate-400 pt-1">
                       Applies only to the portion that isn't recycled — check with your provider or waste transfer notes for a real figure.
                     </p>
@@ -783,115 +722,31 @@ export default function BinCalculator({
           {config.containerType === 'skips_roro' ? (
             // SKIPS AND ROROs PRICING INPUTS
             <div className="space-y-4">
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Transport / Haulage Cost (flat per lift)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.liftRate}
-                    onValueChange={(v) => updateVal('liftRate', v)}
-                    className={numberBoxClass}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Disposal Charge Rate (per Tonne)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.skipsDisposalRate}
-                    onValueChange={(v) => updateVal('skipsDisposalRate', v)}
-                    className={numberBoxClass}
-                  />
-                  <span className="text-[10px] text-slate-400">/t</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Minimum Tonnage Charged (Fair Base Tonnage)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <NumberInput
-                    value={config.skipsMinTonnage}
-                    onValueChange={(v) => updateVal('skipsMinTonnage', v)}
-                    className={numberBoxClass}
-                  />
-                  <span className="text-[10px] text-slate-400">Tonnes</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Excess Tonnage Charge Rate (per Tonne)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.skipsExcessRate}
-                    onValueChange={(v) => updateVal('skipsExcessRate', v)}
-                    className={`${numberBoxClass} text-rose-600`}
-                  />
-                  <span className="text-[10px] text-slate-400">/t</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Estimated Load Weight (per Container Lift)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <NumberInput
-                    integer
-                    value={config.estimatedWeight}
-                    onValueChange={(v) => updateVal('estimatedWeight', v)}
-                    className={`${numberBoxClass} ${isOverweight ? 'text-rose-500' : 'text-slate-900'}`}
-                  />
-                  <span className="text-[10px] text-slate-400">kg</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Equipment Monthly Rental Charge (Optional)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.skipsMonthlyRental}
-                    onValueChange={(v) => updateVal('skipsMonthlyRental', v)}
-                    className={numberBoxClass}
-                  />
-                  <span className="text-[10px] text-slate-400">/mo</span>
-                </div>
-              </div>
+              <RateInput label="Transport / Haulage Cost (flat per lift)" prefix={currencySymbol}
+                value={config.liftRate} onChange={(v) => updateVal('liftRate', v)} />
+              <RateInput label="Disposal Charge Rate (per Tonne)" prefix={currencySymbol} suffix="/t"
+                value={config.skipsDisposalRate} onChange={(v) => updateVal('skipsDisposalRate', v)} />
+              <RateInput label="Minimum Tonnage Charged (Fair Base Tonnage)" suffix="Tonnes"
+                value={config.skipsMinTonnage} onChange={(v) => updateVal('skipsMinTonnage', v)} />
+              <RateInput label="Excess Tonnage Charge Rate (per Tonne)" prefix={currencySymbol} suffix="/t"
+                value={config.skipsExcessRate} onChange={(v) => updateVal('skipsExcessRate', v)}
+                inputClassName="text-rose-600" />
+              <RateInput label="Estimated Load Weight (per Container Lift)" suffix="kg" integer
+                value={config.estimatedWeight} onChange={(v) => updateVal('estimatedWeight', v)}
+                inputClassName={isOverweight ? 'text-rose-500' : 'text-slate-900'} />
+              <RateInput label="Equipment Monthly Rental Charge (Optional)" prefix={currencySymbol} suffix="/mo"
+                value={config.skipsMonthlyRental} onChange={(v) => updateVal('skipsMonthlyRental', v)} />
             </div>
           ) : (
             // WHEELIE BINS AND RELs PRICING INPUTS
             <div className="space-y-4">
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Lift Rate (per container emptied)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.liftRate}
-                    onValueChange={(v) => updateVal('liftRate', v)}
-                    className={numberBoxClass}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Weekly Rental Fee (equipment hire)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.rentalFee}
-                    onValueChange={(v) => updateVal('rentalFee', v)}
-                    className={numberBoxClass}
-                  />
-                  <span className="text-[10px] text-slate-400">/wk</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Estimated Load Weight (per Container Lift)</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <NumberInput
-                    integer
-                    value={config.estimatedWeight}
-                    onValueChange={(v) => updateVal('estimatedWeight', v)}
-                    className={`${numberBoxClass} ${isOverweight ? 'text-amber-600' : 'text-slate-900'}`}
-                  />
-                  <span className="text-[10px] text-slate-400">kg</span>
-                </div>
-              </div>
+              <RateInput label="Lift Rate (per container emptied)" prefix={currencySymbol}
+                value={config.liftRate} onChange={(v) => updateVal('liftRate', v)} />
+              <RateInput label="Weekly Rental Fee (equipment hire)" prefix={currencySymbol} suffix="/wk"
+                value={config.rentalFee} onChange={(v) => updateVal('rentalFee', v)} />
+              <RateInput label="Estimated Load Weight (per Container Lift)" suffix="kg" integer
+                value={config.estimatedWeight} onChange={(v) => updateVal('estimatedWeight', v)}
+                inputClassName={isOverweight ? 'text-amber-600' : 'text-slate-900'} />
               {/* Weight allowance: the contract term the excess charge is
                   measured against, so it gets its own highlighted panel. */}
               <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -914,23 +769,14 @@ export default function BinCalculator({
                   <span className="text-xs text-slate-500">kg</span>
                 </div>
               </div>
-              <div className="flex justify-between items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-600">Excess weight / overweight charge</span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-slate-400 font-mono text-xs">{currencySymbol}</span>
-                  <NumberInput
-                    value={config.overweightSurcharge}
-                    onValueChange={(v) => updateVal('overweightSurcharge', v)}
-                    className={`${numberBoxClass} text-rose-600`}
-                  />
-                  <span className="text-[10px] text-slate-400">/kg extra</span>
-                </div>
-              </div>
+              <RateInput label="Excess weight / overweight charge" prefix={currencySymbol} suffix="/kg extra"
+                value={config.overweightSurcharge} onChange={(v) => updateVal('overweightSurcharge', v)}
+                inputClassName="text-rose-600" />
             </div>
           )}
           
           {/* Circularity ESG Dashboard */}
-          <CircularityDashboard config={config} result={result} customerName={customerName} companyName={companyName} brandName={brandName} />
+          <CircularityDashboard config={deferredConfig} result={deferredResult} customerName={customerName} companyName={companyName} brandName={brandName} />
         </div>
       </div>
 
@@ -938,7 +784,7 @@ export default function BinCalculator({
       <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-4 lg:self-start">
         
         {/* Dynamic Container Visualizer Rendering */}
-        <ContainerVisualizer config={config} />
+        <ContainerVisualizer config={deferredConfig} />
 
         {/* Cost Breakdown & Output Column */}
         <div className="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between h-full relative overflow-hidden">

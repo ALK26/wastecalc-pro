@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -41,7 +41,7 @@ interface CircularityDashboardProps {
   brandName?: string;
 }
 
-export default function CircularityDashboard({ config, result, onChangeConfig, customerName, companyName, brandName }: CircularityDashboardProps) {
+function CircularityDashboard({ config, result, onChangeConfig, customerName, companyName, brandName }: CircularityDashboardProps) {
   const [activeTab, setActiveTab] = useState<'material' | 'prn' | 'diversion'>('material');
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -697,3 +697,5 @@ export default function CircularityDashboard({ config, result, onChangeConfig, c
   );
 }
 
+// Memoized: re-renders only when its props change, not on every parent render.
+export default memo(CircularityDashboard);
