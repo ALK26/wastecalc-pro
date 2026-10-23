@@ -9,6 +9,10 @@ import {
   FileDown,
   CheckCircle2,
   Loader2,
+  ClipboardList,
+  AlertTriangle,
+  PoundSterling,
+  ShieldCheck,
 } from 'lucide-react';
 
 import ProductTourCarousel from '../components/ProductTourCarousel';
@@ -46,14 +50,14 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-4 pt-16 pb-14 text-center">
         <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-100 mb-6">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          7 days full access, free — no card required
+          £16 One-Time Lifetime Access · try it free for 7 days
         </div>
         <h1 className="text-4xl md:text-5xl font-black font-display text-slate-900 leading-tight tracking-tight mb-5">
-          Model commercial waste costs<br className="hidden md:block" /> from your own quotes and rates.
+          One wrong rate on a waste quote<br className="hidden md:block" /> costs you for the whole contract.
         </h1>
         <p className="text-base md:text-lg text-slate-500 max-w-2xl mx-auto mb-8">
-          Enter a quote you've received, your current contract rates, or a target budget for Eurobins, REL/FEL, or Skip/RoRo containers —
-          get a full itemized cost breakdown with recycling rate and CO2 impact, instantly.
+          Check every lift charge, rental fee and overweight surcharge before you sign. Enter the quote for Eurobins, REL/FEL,
+          or Skip/RoRo containers and get an itemised, line-by-line breakdown, with recycling rate and CO2 impact included.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
@@ -78,6 +82,51 @@ export default function LandingPage() {
       {/* Product tour */}
       <section className="pb-16">
         <ProductTourCarousel />
+      </section>
+
+      {/* SPIN: situation -> problem -> implication -> need-payoff */}
+      <section className="max-w-5xl mx-auto px-4 pb-16">
+        <h2 className="text-2xl font-bold font-display text-slate-900 text-center mb-2">
+          The real cost of checking quotes by hand
+        </h2>
+        <p className="text-sm text-slate-500 text-center mb-10">
+          Small errors in a waste quote don't stay small. They repeat on every collection.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="p-6 rounded-2xl border border-slate-200">
+            <ClipboardList className="w-5 h-5 text-slate-400 mb-3" />
+            <h3 className="font-bold text-sm text-slate-900 mb-1.5">Where you are now</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Quotes arrive as PDFs and emails with different container sizes, lift frequencies and surcharge rules. Comparing them
+              means a spreadsheet, a calculator and a lot of re-typing.
+            </p>
+          </div>
+          <div className="p-6 rounded-2xl border border-slate-200">
+            <AlertTriangle className="w-5 h-5 text-amber-500 mb-3" />
+            <h3 className="font-bold text-sm text-slate-900 mb-1.5">Where it goes wrong</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              A lift rate keyed in wrong, a rental fee left out, an overweight threshold misread. Mistakes like these are easy to make
+              and hard to spot once they're buried in a cell formula.
+            </p>
+          </div>
+          <div className="p-6 rounded-2xl border border-rose-200 bg-rose-50/40">
+            <PoundSterling className="w-5 h-5 text-rose-500 mb-3" />
+            <h3 className="font-bold text-sm text-slate-900 mb-1.5">What it really costs</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Contract rates are charged on every lift, every week, for years. As an example, a £5 per-lift error on a bin collected
+              three times a week is <strong className="text-slate-800">£780 a year</strong>, and that's for one container. Then the
+              wrong figure goes into your budget and your sign-off.
+            </p>
+          </div>
+          <div className="p-6 rounded-2xl border border-emerald-200 bg-emerald-50/40">
+            <ShieldCheck className="w-5 h-5 text-emerald-500 mb-3" />
+            <h3 className="font-bold text-sm text-slate-900 mb-1.5">What changes with WasteCalc Pro</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Every quote is broken down line by line, so every figure can be traced and checked before you commit. Catching one
+              overcharge worth more than £16 pays for the tool, and you only ever pay once.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* How it works */}
@@ -149,19 +198,19 @@ export default function LandingPage() {
       <section className="bg-slate-50 border-y border-slate-100 py-16">
         <div className="max-w-4xl mx-auto px-4">
           <h2 className="text-2xl font-bold font-display text-slate-900 text-center mb-2">
-            Why procurement teams choose WasteCalc Pro
+            Sign off on waste contracts with confidence
           </h2>
           <p className="text-sm text-slate-500 text-center mb-10">
-            Enter your own quotes or rates — no sales calls, no waiting on a provider to get back to you.
+            Check a quote yourself in minutes. No sales calls, no waiting on a provider to get back to you.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
             {[
-              'Enter a quote, rate, or budget target and get a full breakdown instantly',
+              'Spot pricing errors before they are locked into a multi-year contract',
               'Recycling rate and CO2 impact on every calculation, ready for ESG reporting',
               'Compare two setups side by side before you commit to a contract',
               'Export a proper PDF quote in seconds',
               '7 days of full access, free — no card required to start',
-              'Cancel monthly plans any time, no phone call needed',
+              '£16 One-Time Lifetime Access: pay once, no subscription',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
@@ -174,7 +223,7 @@ export default function LandingPage() {
               to="/app"
               className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition"
             >
-              Try It Free For 7 Days
+              Get £16 One-Time Lifetime Access
               <ArrowRight className="w-4 h-4 text-emerald-400" />
             </Link>
           </div>
@@ -192,10 +241,10 @@ export default function LandingPage() {
       <section className="bg-slate-900 py-16">
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold font-display text-white mb-3">
-            Ready to model your own numbers?
+            Check your next quote before you sign it.
           </h2>
           <p className="text-sm text-slate-400 mb-8">
-            7 days of full access. No card required. Cancel or downgrade any time.
+            7 days of full access, free, with no card required. Then £16 One-Time Lifetime Access: no subscription, nothing to cancel.
           </p>
           <Link
             to="/app"
