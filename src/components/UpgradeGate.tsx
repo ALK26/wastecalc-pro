@@ -63,7 +63,7 @@ export default function UpgradeGate({
         </div>
         <h3 className="text-lg font-bold font-display text-slate-900 mb-1">Sign in to unlock {featureName}</h3>
         <p className="text-xs text-slate-500 mb-6">
-          New accounts get full Pro access free for 7 days — no card required.
+          Then unlock every Pro feature with £16 One-Time Lifetime Access.
         </p>
 
         {step === 'email' ? (
@@ -127,14 +127,14 @@ export default function UpgradeGate({
     );
   }
 
-  // Signed in, trial expired / never subscribed: show the upsell.
+  // Signed in but hasn't bought lifetime access: show the upsell.
   return (
     <div className="max-w-md mx-auto py-16 px-6 text-center">
       <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto mb-4">
         <Sparkles className="w-5 h-5" />
       </div>
       <h3 className="text-lg font-bold font-display text-slate-900 mb-1">{featureName} is a Pro feature</h3>
-      <p className="text-xs text-slate-500 mb-8">Your free trial has ended. Upgrade once to get it back for good.</p>
+      <p className="text-xs text-slate-500 mb-8">Pay once to unlock every Pro feature, for good.</p>
 
       <div className="p-5 rounded-2xl border-2 border-slate-900 bg-white text-left">
         <h4 className="font-bold text-sm text-slate-900">Pro Lifetime Access</h4>

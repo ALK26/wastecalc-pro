@@ -36,12 +36,12 @@ export default function LandingPage() {
             <Link to="/app" className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition">
               Sign In
             </Link>
-            <Link
-              to="/app"
+            <a
+              href="#pricing"
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition"
             >
-              Start Free Trial
-            </Link>
+              Get Lifetime Access
+            </a>
           </div>
         </div>
       </nav>
@@ -50,7 +50,7 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-4 pt-16 pb-14 text-center">
         <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-100 mb-6">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          £16 One-Time Lifetime Access · try it free for 7 days
+          £16 One-Time Lifetime Access · pay once, own it for life
         </div>
         <h1 className="text-4xl md:text-5xl font-black font-display text-slate-900 leading-tight tracking-tight mb-5">
           One wrong rate on a waste quote<br className="hidden md:block" /> costs you for the whole contract.
@@ -60,19 +60,19 @@ export default function LandingPage() {
           or Skip/RoRo containers and get an itemised, line-by-line breakdown, with recycling rate and CO2 impact included.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            to="/app"
+          <a
+            href="#pricing"
             className="px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition shadow-lg flex items-center gap-2"
           >
-            Start Your Free Trial
+            Get Lifetime Access — £16
             <ArrowRight className="w-4 h-4 text-emerald-400" />
-          </Link>
-          <a
-            href="#how-it-works"
+          </a>
+          <Link
+            to="/app"
             className="px-6 py-3.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition"
           >
-            See how it works
-          </a>
+            Open Calculator
+          </Link>
         </div>
         <p className="text-[11px] text-slate-400 mt-4">
           Built for facilities managers and procurement teams at UK businesses.
@@ -209,7 +209,7 @@ export default function LandingPage() {
               'Recycling rate and CO2 impact on every calculation, ready for ESG reporting',
               'Compare two setups side by side before you commit to a contract',
               'Export a proper PDF quote in seconds',
-              '7 days of full access, free — no card required to start',
+              'Core calculator free to use, no card required',
               '£16 One-Time Lifetime Access: pay once, no subscription',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-2.5">
@@ -219,19 +219,19 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="text-center">
-            <Link
-              to="/app"
+            <a
+              href="#pricing"
               className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition"
             >
               Get £16 One-Time Lifetime Access
               <ArrowRight className="w-4 h-4 text-emerald-400" />
-            </Link>
+            </a>
           </div>
         </div>
       </section>
 
       {/* Pricing */}
-      <section className="max-w-5xl mx-auto px-4 py-16">
+      <section id="pricing" className="max-w-5xl mx-auto px-4 py-16 scroll-mt-4">
         <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>}>
           <PricingSection />
         </Suspense>
@@ -244,15 +244,15 @@ export default function LandingPage() {
             Check your next quote before you sign it.
           </h2>
           <p className="text-sm text-slate-400 mb-8">
-            7 days of full access, free, with no card required. Then £16 One-Time Lifetime Access: no subscription, nothing to cancel.
+            £16 One-Time Lifetime Access. Every Pro feature unlocked at once: no subscription, nothing to cancel.
           </p>
-          <Link
-            to="/app"
+          <a
+            href="#pricing"
             className="inline-flex items-center gap-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-sm font-bold rounded-xl transition"
           >
-            Start Your Free Trial
+            Get Lifetime Access
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </a>
         </div>
       </section>
 

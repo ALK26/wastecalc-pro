@@ -5,8 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 
 // Gates the entire calculator app -- unlike UpgradeGate (which checks Pro
 // entitlement for individual premium features), this only checks whether
-// someone is signed in at all. Anyone can sign up; signing up is what starts
-// the trial. This is the "wall" between the public marketing site
+// someone is signed in at all. Anyone can sign up; premium features still
+// need the £16 lifetime purchase. This is the "wall" between the public marketing site
 // and the actual product.
 //
 // Uses a magic link for now (Supabase's default email template doesn't
@@ -69,7 +69,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
           <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center font-bold text-emerald-400 font-display mx-auto mb-5">W</div>
           <h1 className="text-xl font-bold font-display text-slate-900 mb-1">Sign in to WasteCalc Pro</h1>
           <p className="text-xs text-slate-500 mb-6">
-            7 days of full Pro access, free — no card required.
+            The calculator is free. Unlock every Pro feature with £16 One-Time Lifetime Access.
           </p>
 
           {step === 'email' ? (

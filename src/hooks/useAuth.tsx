@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // silently create a real anonymous account so every feature works
         // immediately with zero email/code/link friction. This still
         // triggers the same handle_new_user() trigger as a real signup, so
-        // the 7-day trial starts automatically like normal.
+        // the account can buy lifetime access straight away.
         const { data: anon, error } = await supabase.auth.signInAnonymously();
         if (!error) setSession(anon.session);
       }
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Sends a one-time sign-in email/code. Not needed for normal trial usage
+  // Sends a one-time sign-in email/code. Not needed for normal guest usage
   // anymore (that's anonymous now) -- this remains available for anyone who
   // wants to attach a real email to their account (e.g. before paying, or to
   // access their saved quotes from another device/browser).

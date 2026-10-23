@@ -177,7 +177,7 @@ export default function CalculatorApp() {
   };
 
   const { user, isAnonymous } = useAuth();
-  const { hasProAccess, trialDaysLeft, entitlement, refetch: refetchEntitlement } = useEntitlement();
+  const { hasProAccess, refetch: refetchEntitlement } = useEntitlement();
 
   // Once signed in, default the email field to their account email
   useEffect(() => {
@@ -312,24 +312,14 @@ export default function CalculatorApp() {
               ) : (
                 <>
                   <span className="px-3 py-1.5 bg-slate-800 rounded border border-slate-700 text-[10px] text-slate-300">
-                    {isAnonymous ? 'Trial Account' : user.email}
+                    {isAnonymous ? 'Guest Account' : user.email}
                   </span>
-                  {entitlement.status === 'trialing' && trialDaysLeft !== null && (
+                  {hasProAccess && (
                     <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/30 text-[10px] font-bold">
-                      {trialDaysLeft}-day Pro trial
+                      Lifetime Pro
                     </span>
                   )}
-                  {entitlement.tier === 'pro' && entitlement.status === 'active' && (
-                    <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/30 text-[10px] font-bold">
-                      Pro
-                    </span>
-                  )}
-                  {entitlement.tier === 'site_license' && entitlement.status === 'active' && (
-                    <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/30 text-[10px] font-bold">
-                      Site License
-                    </span>
-                  )}
-                  {!hasProAccess && entitlement.status === 'free' && (
+                  {!hasProAccess && (
                     <span className="px-3 py-1.5 bg-slate-800 rounded border border-slate-700 text-[10px] text-slate-300">
                       Free plan
                     </span>

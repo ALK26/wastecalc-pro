@@ -227,7 +227,7 @@ export default function SavedQuotesTab({
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 leading-tight">{companyName || 'Your account'}</h3>
-                <p className="text-xs text-slate-400">{isAnonymous ? 'Trial account (no email attached)' : user?.email}</p>
+                <p className="text-xs text-slate-400">{isAnonymous ? 'Guest account (no email attached)' : user?.email}</p>
               </div>
             </div>
             {!isAnonymous && (

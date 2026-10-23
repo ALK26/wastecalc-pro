@@ -19,7 +19,7 @@ const PRO_FEATURES = [
 
 export default function PricingSection() {
   const { user } = useAuth();
-  const { hasLifetimeAccess, entitlement, trialDaysLeft } = useEntitlement();
+  const { hasProAccess } = useEntitlement();
   const { startCheckout, starting, error } = useCheckout();
 
   return (
@@ -33,7 +33,7 @@ export default function PricingSection() {
           <div>
             <h3 className="text-lg font-bold font-display text-white">Plans &amp; Pricing</h3>
             <p className="text-xs text-slate-400">
-              Every new account starts with 7 days of full Pro access. No card required.
+              The calculator is free. Pay £16 once to unlock every Pro feature for life.
             </p>
           </div>
         </div>
@@ -66,7 +66,7 @@ export default function PricingSection() {
             </li>
           </ul>
 
-          {user ? (
+          {user && !hasProAccess ? (
             <div className="py-2.5 text-center text-xs font-bold text-slate-400 border border-slate-200 rounded-xl">
               Your current plan
             </div>
@@ -99,25 +99,18 @@ export default function PricingSection() {
             ))}
           </ul>
 
-          {hasLifetimeAccess ? (
+          {hasProAccess ? (
             <div className="py-2.5 text-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl">
               Lifetime access unlocked
             </div>
           ) : (
-            <div className="space-y-2">
-              {entitlement.status === 'trialing' && (
-                <div className="py-2.5 text-center text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl">
-                  Active — {trialDaysLeft} days left in trial
-                </div>
-              )}
-              <button
-                disabled={starting}
-                onClick={startCheckout}
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-60"
-              >
-                {starting ? 'Redirecting…' : user ? 'Get Lifetime Access — £16' : 'Start free trial'}
-              </button>
-            </div>
+            <button
+              disabled={starting}
+              onClick={startCheckout}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-60"
+            >
+              {starting ? 'Redirecting…' : 'Get Lifetime Access — £16'}
+            </button>
           )}
         </div>
       </div>

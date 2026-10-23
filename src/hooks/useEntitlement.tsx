@@ -8,22 +8,18 @@ export type SubStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'free'
 export interface Entitlement {
   tier: Tier;
   status: SubStatus;
-  trialEndsAt: string | null;
   stripePriceId: string | null;
 }
 
 const FREE_ENTITLEMENT: Entitlement = {
   tier: 'free',
   status: 'free',
-  trialEndsAt: null,
   stripePriceId: null,
 };
 
 interface EntitlementContextValue {
   entitlement: Entitlement;
   hasProAccess: boolean;
-  hasLifetimeAccess: boolean;
-  trialDaysLeft: number | null;
   loading: boolean;
   refetch: () => Promise<void>;
 }
@@ -56,7 +52,6 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
       setEntitlement({
         tier: row.tier,
         status: row.status,
-        trialEndsAt: row.trial_ends_at,
         stripePriceId: row.stripe_price_id,
       });
     }
@@ -72,15 +67,13 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
   // written to the entitlement row by the webhook after a successful checkout,
   // so its presence is the record of a past purchase. Deliberately ignores
   // renewal state (period end, cancel-at-period-end, status) -- once paid,
-  // access never lapses.
-  const hasLifetimeAccess = entitlement.tier !== 'free' && !!entitlement.stripePriceId;
-  const hasProAccess = hasLifetimeAccess || entitlement.status === 'trialing';
-  const trialDaysLeft = entitlement.trialEndsAt
-    ? Math.max(0, Math.ceil((new Date(entitlement.trialEndsAt).getTime() - Date.now()) / 86_400_000))
-    : null;
+  // access never lapses. This is the single flag every premium gate reads,
+  // so one purchase unlocks everything at once. There is no free trial:
+  // legacy 'trialing' rows (no price ID) grant nothing.
+  const hasProAccess = entitlement.tier !== 'free' && !!entitlement.stripePriceId;
 
   return (
-    <EntitlementContext.Provider value={{ entitlement, hasProAccess, hasLifetimeAccess, trialDaysLeft, loading, refetch }}>
+    <EntitlementContext.Provider value={{ entitlement, hasProAccess, loading, refetch }}>
       {children}
     </EntitlementContext.Provider>
   );
