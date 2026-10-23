@@ -14,7 +14,9 @@ const webhookSigningSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET")!;
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-08-27.basil" });
+// stripe@17's types only know its pinned API version; the account runs on
+// basil at runtime, so cast rather than downgrade the requested version.
+const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // Must match LIFETIME_PRODUCT_KEY in netlify/functions/create-checkout-session.mts.
@@ -92,13 +94,20 @@ async function grantLifetimeFromSession(session: Stripe.Checkout.Session) {
     return;
   }
 
+  await upsertLifetimeRow(supabaseUserId, priceId, (session.customer as string | null) ?? null);
+
+  const email = session.customer_details?.email?.trim().toLowerCase();
+  if (email) await linkEmailToAnonymousBuyer(supabaseUserId, email, priceId, (session.customer as string | null) ?? null);
+}
+
+async function upsertLifetimeRow(userId: string, priceId: string, stripeCustomerId: string | null) {
   const { error } = await supabase.from("subscriptions").upsert(
     {
       owner_type: "user",
-      owner_id: supabaseUserId,
+      owner_id: userId,
       tier: "pro",
       status: "active",
-      stripe_customer_id: (session.customer as string | null) ?? null,
+      stripe_customer_id: stripeCustomerId,
       stripe_subscription_id: null,
       stripe_price_id: priceId,
       current_period_end: null,
@@ -113,6 +122,53 @@ async function grantLifetimeFromSession(session: Stripe.Checkout.Session) {
   }
 }
 
+// Most buyers check out from an anonymous session, so their purchase would
+// be lost with their browser storage. Attach the email Stripe collected to
+// that account so they can sign back in with a magic link from any device.
+// Idempotent, so a Stripe retry can safely re-run it:
+// - accounts that already have an email are never touched
+// - if another account already owns the email, don't merge accounts --
+//   grant that account lifetime access too, so signing in with the email
+//   still reaches the purchase
+async function linkEmailToAnonymousBuyer(
+  userId: string,
+  email: string,
+  priceId: string,
+  stripeCustomerId: string | null,
+) {
+  const { data: lookup, error: lookupError } = await supabase.auth.admin.getUserById(userId);
+  if (lookupError || !lookup?.user) {
+    throw new Error(`Failed to load buyer ${userId}: ${lookupError?.message ?? "not found"}`);
+  }
+  const buyer = lookup.user;
+  if (!buyer.is_anonymous || buyer.email) return;
+
+  const { data: existing } = await supabase.from("profiles").select("id").eq("email", email).neq("id", userId).maybeSingle();
+  if (existing) {
+    console.log("Buyer email already has an account; granting it lifetime access", userId, existing.id);
+    await upsertLifetimeRow(existing.id, priceId, stripeCustomerId);
+    return;
+  }
+
+  const { data: updated, error: updateError } = await supabase.auth.admin.updateUserById(userId, { email });
+  if (updateError) {
+    if (updateError.code === "email_exists") {
+      // An auth account owns this email but its profile email is stale, so
+      // the lookup above missed it. Retrying would fail the same way; the
+      // purchase stays on the anonymous account. Needs manual follow-up.
+      console.error("Buyer email registered to an account with a stale profile email", userId);
+      return;
+    }
+    throw new Error(`Failed to link email to buyer ${userId}: ${updateError.message}`);
+  }
+  if (updated?.user?.is_anonymous) {
+    console.error("Email linked but account still marked anonymous", userId);
+  }
+
+  const { error: profileError } = await supabase.from("profiles").update({ email }).eq("id", userId);
+  if (profileError) console.error("Failed to sync profile email", userId, profileError);
+}
+
 async function upsertFromSubscription(sub: Stripe.Subscription, supabaseUserId: string | null) {
   const priceId = sub.items.data[0]?.price?.id;
   const tier = priceId ? PRICE_TIER_MAP[priceId] : undefined;
@@ -122,7 +178,10 @@ async function upsertFromSubscription(sub: Stripe.Subscription, supabaseUserId: 
   }
 
   const status = mapStripeStatus(sub.status);
-  const currentPeriodEnd = new Date(sub.items.data[0].current_period_end * 1000).toISOString();
+  // On the basil API current_period_end lives on the subscription item;
+  // stripe@17's types still describe the older shape.
+  const item = sub.items.data[0] as Stripe.SubscriptionItem & { current_period_end: number };
+  const currentPeriodEnd = new Date(item.current_period_end * 1000).toISOString();
   const cancelAtPeriodEnd = sub.cancel_at_period_end ?? false;
 
   if (tier === "pro") {
