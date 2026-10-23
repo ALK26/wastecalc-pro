@@ -63,7 +63,7 @@ export default function UpgradeGate({
         </div>
         <h3 className="text-lg font-bold font-display text-slate-900 mb-1">Sign in to unlock {featureName}</h3>
         <p className="text-xs text-slate-500 mb-6">
-          Then unlock every Pro feature with £16 One-Time Lifetime Access.
+          Then unlock WasteCalc Pro for life with a one-time £16 payment.
         </p>
 
         {step === 'email' ? (
@@ -134,20 +134,20 @@ export default function UpgradeGate({
         <Sparkles className="w-5 h-5" />
       </div>
       <h3 className="text-lg font-bold font-display text-slate-900 mb-1">{featureName} is a Pro feature</h3>
-      <p className="text-xs text-slate-500 mb-8">Pay once to unlock every Pro feature, for good.</p>
+      <p className="text-xs text-slate-500 mb-8">Unlock WasteCalc Pro for life.</p>
 
       <div className="p-5 rounded-2xl border-2 border-slate-900 bg-white text-left">
         <h4 className="font-bold text-sm text-slate-900">Pro Lifetime Access</h4>
         <p className="text-2xl font-bold text-slate-900 mt-1">
           £16<span className="text-xs font-normal text-slate-400"> one-time fee</span>
         </p>
-        <p className="text-[10px] text-slate-400 mb-4">Pay once · lifetime access to every Pro feature</p>
+        <p className="text-[10px] text-slate-400 mb-4">Pay once · every feature included</p>
         <button
           disabled={starting}
           onClick={startCheckout}
           className="w-full py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition cursor-pointer disabled:opacity-60"
         >
-          {starting ? 'Redirecting…' : 'Get Lifetime Access — £16'}
+          {starting ? 'Redirecting…' : 'Unlock WasteCalc Pro for Life — £16'}
         </button>
       </div>
       {checkoutError && <p className="text-rose-600 text-[11px] mt-4">{checkoutError}</p>}

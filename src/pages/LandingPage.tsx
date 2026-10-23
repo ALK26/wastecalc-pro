@@ -209,7 +209,7 @@ export default function LandingPage() {
               'Recycling rate and CO2 impact on every calculation, ready for ESG reporting',
               'Compare two setups side by side before you commit to a contract',
               'Export a proper PDF quote in seconds',
-              'Core calculator free to use, no card required',
+              'Unlock WasteCalc Pro for life: every feature included, no upgrades to buy later',
               '£16 One-Time Lifetime Access: pay once, no subscription',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-2.5">
