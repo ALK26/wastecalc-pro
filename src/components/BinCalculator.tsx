@@ -36,7 +36,8 @@ import {
   WasteTypeId,
   calculatePricing,
   formatCurrency,
-  aggregateQuoteStreams
+  aggregateQuoteStreams,
+  canAddStreamToBasket
 } from '../types';
 import ContainerVisualizer from './ContainerVisualizer';
 import CircularityDashboard from './CircularityDashboard';
@@ -75,8 +76,11 @@ export default function BinCalculator({
   const activeWaste = WASTE_TYPES[config.wasteType] || WASTE_TYPES.general;
 
   // Multi-stream solution helpers
+  const addCheck = canAddStreamToBasket(quoteStreams, config);
+  const addBlockedReason = addCheck.reason ?? null;
+
   const handleAddStreamToQuote = () => {
-    if (onUpdateStreams) {
+    if (onUpdateStreams && addCheck.ok) {
       onUpdateStreams([...quoteStreams, { ...config }]);
     }
   };
@@ -768,11 +772,16 @@ export default function BinCalculator({
             <p className="text-[11px] text-emerald-600 font-semibold max-w-sm">
               Save your current <strong>{WASTE_TYPES[config.wasteType]?.label || 'General Waste'}</strong> stream setup to the basket, then configure other materials (e.g., Cardboard, Food, Glass) to bundle your full quote.
             </p>
+            {addBlockedReason && (
+              <p className="text-[11px] text-rose-600 font-semibold max-w-sm">{addBlockedReason}</p>
+            )}
           </div>
           <button
             type="button"
             onClick={handleAddStreamToQuote}
-            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer hover:shadow-emerald-500/10 active:scale-[0.98]"
+            disabled={!!addBlockedReason}
+            title={addBlockedReason ?? undefined}
+            className="w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer hover:shadow-emerald-500/10 active:scale-[0.98]"
           >
             <Plus className="w-4 h-4 text-emerald-200" />
             <span>+ Add Stream</span>
@@ -1276,7 +1285,9 @@ export default function BinCalculator({
               <button
                 type="button"
                 onClick={handleAddStreamToQuote}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-3 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer active:scale-[0.98]"
+                disabled={!!addBlockedReason}
+                title={addBlockedReason ?? undefined}
+                className="disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-3 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer active:scale-[0.98]"
               >
                 <Layers className="w-4 h-4 text-emerald-200" />
                 <span>+ Add Stream</span>
@@ -1293,6 +1304,9 @@ export default function BinCalculator({
                 </button>
               )}
             </div>
+            {addBlockedReason && (
+              <p className="text-[11px] text-rose-300 leading-snug">{addBlockedReason}</p>
+            )}
 
             <button
               type="button"
@@ -1316,6 +1330,9 @@ export default function BinCalculator({
         scrolling, regardless of where you are on the page. Hidden on
         desktop (lg+) where the sticky estimator column already handles it. */}
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
+      {addBlockedReason && (
+        <p className="text-[10px] text-rose-600 font-semibold leading-snug mb-2">{addBlockedReason}</p>
+      )}
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
           <p className="text-[8px] text-slate-400 font-mono uppercase leading-none">Monthly</p>
@@ -1326,7 +1343,9 @@ export default function BinCalculator({
         <button
           type="button"
           onClick={handleAddStreamToQuote}
-          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 px-2 rounded-xl text-[10px] uppercase tracking-wide flex items-center justify-center gap-1 cursor-pointer active:scale-[0.98]"
+          disabled={!!addBlockedReason}
+          title={addBlockedReason ?? undefined}
+          className="flex-1 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 px-2 rounded-xl text-[10px] uppercase tracking-wide flex items-center justify-center gap-1 cursor-pointer active:scale-[0.98]"
         >
           <Layers className="w-3.5 h-3.5" />
           Add Stream

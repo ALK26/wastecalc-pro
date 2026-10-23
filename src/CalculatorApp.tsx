@@ -112,18 +112,29 @@ export default function CalculatorApp() {
   const [quoteStreams, setQuoteStreams] = useState<PricingConfig[]>(() => {
     try {
       const saved = localStorage.getItem('wcp_draft_streams');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      // Merge each stream over the defaults too, so streams saved before a
+      // schema field existed don't come back with it undefined (-> NaN).
+      return Array.isArray(parsed)
+        ? parsed.map((s: Partial<PricingConfig>) => ({ ...DEFAULT_CALCULATOR_CONFIG, ...s }))
+        : [];
     } catch {
       return [];
     }
   });
 
+  // The draft is a convenience backup: if storage is full or blocked
+  // (private browsing, quota), keep working without it rather than crash.
   useEffect(() => {
-    localStorage.setItem('wcp_draft_config', JSON.stringify(calculatorConfig));
+    try {
+      localStorage.setItem('wcp_draft_config', JSON.stringify(calculatorConfig));
+    } catch {}
   }, [calculatorConfig]);
 
   useEffect(() => {
-    localStorage.setItem('wcp_draft_streams', JSON.stringify(quoteStreams));
+    try {
+      localStorage.setItem('wcp_draft_streams', JSON.stringify(quoteStreams));
+    } catch {}
   }, [quoteStreams]);
 
   const { user, isAnonymous } = useAuth();
@@ -206,8 +217,10 @@ export default function CalculatorApp() {
   const handleNewQuote = () => {
     setQuoteStreams([]);
     setCalculatorConfig(DEFAULT_CALCULATOR_CONFIG);
-    localStorage.removeItem('wcp_draft_config');
-    localStorage.removeItem('wcp_draft_streams');
+    try {
+      localStorage.removeItem('wcp_draft_config');
+      localStorage.removeItem('wcp_draft_streams');
+    } catch {}
   };
 
   const handleDownloadPDF = async () => {

@@ -4,6 +4,7 @@ import {
   calculatePricing,
   aggregateQuoteStreams,
   getContainerSpec,
+  canAddStreamToBasket,
   FREQUENCY_MULTIPLIERS,
   WASTE_TYPES,
 } from './types';
@@ -141,11 +142,7 @@ describe('calculatePricing: skips / RoRos', () => {
     expect(r.totalWeeklyCost).toBeCloseTo(510, 6);
   });
 
-  // Target behaviour from UI_UPDATE_PLAN.md Phase 1: the minimum tonnage is a
-  // billing floor. Today a light load is billed at its actual weight, so this
-  // is marked `fails`. Once Phase 1 lands, Vitest reports it as unexpectedly
-  // passing: change `it.fails` to `it` at that point.
-  it.fails('bills the minimum tonnage when the load is lighter (Phase 1 floor)', () => {
+  it('bills the minimum tonnage as a floor when the load is lighter', () => {
     const r = calculatePricing(skip({ estimatedWeight: 1000 })); // 1 t load, 2 t minimum
     expect(r.monthlyDisposalCost).toBeCloseTo(200, 6); // floor: 2 t * 100
     expect(r.monthlyOverweightCost).toBe(0);
@@ -213,6 +210,22 @@ describe('aggregateQuoteStreams', () => {
     expect(agg.streamCount).toBe(0);
     expect(agg.totalMonthlyCost).toBe(0);
     expect(agg.recyclingRate).toBe(0);
+  });
+});
+
+describe('canAddStreamToBasket', () => {
+  it('allows any currency into an empty basket', () => {
+    expect(canAddStreamToBasket([], eurobin({ currency: 'EUR' }))).toEqual({ ok: true });
+  });
+
+  it('allows a stream matching the basket currency', () => {
+    expect(canAddStreamToBasket([eurobin(), skip()], eurobin())).toEqual({ ok: true });
+  });
+
+  it('blocks a stream whose currency differs from the basket', () => {
+    const check = canAddStreamToBasket([eurobin()], eurobin({ currency: 'USD' }));
+    expect(check.ok).toBe(false);
+    expect(check.reason).toContain('GBP');
   });
 });
 

@@ -466,10 +466,12 @@ export function calculatePricing(config: PricingConfig): CalculationResult {
     // 1. Transport/Haulage Cost (lift rate is overridden/stored here)
     const monthlyLiftCost = config.liftRate * config.quantity * collectionsPerMonth;
     
-    // 2. Base Disposal Cost (Min Tonnage)
+    // 2. Base Disposal Cost (Min Tonnage) -- the minimum is a billing floor:
+    // every lift is billed at least minTonnage, and anything heavier is
+    // billed as excess below, so total tonnage charged = max(min, weight).
     const weightTonnes = config.estimatedWeight / 1000;
     const minTonnage = config.skipsMinTonnage;
-    const baseTonnageCharged = Math.min(minTonnage, weightTonnes);
+    const baseTonnageCharged = minTonnage;
     const monthlyDisposalCost = baseTonnageCharged * config.skipsDisposalRate * config.quantity * collectionsPerMonth;
     
     // 3. Excess Tonnage Cost (Excess Rate)
@@ -614,6 +616,21 @@ export function aggregateQuoteStreams(streams: PricingConfig[]): AggregatedQuote
     prnEstimate,
     streamCount: streams.length,
   };
+}
+
+export type StreamAddCheck = { ok: true; reason?: undefined } | { ok: false; reason: string };
+
+// Currency is only a display label (no conversion), so a basket must hold a
+// single currency -- otherwise aggregateQuoteStreams would add £ to €.
+export function canAddStreamToBasket(basket: PricingConfig[], stream: PricingConfig): StreamAddCheck {
+  const basketCurrency = basket[0]?.currency;
+  if (basketCurrency && stream.currency !== basketCurrency) {
+    return {
+      ok: false,
+      reason: `This stream is priced in ${stream.currency} but your basket is in ${basketCurrency}. Switch the currency to ${basketCurrency} to add it.`,
+    };
+  }
+  return { ok: true };
 }
 
 export function formatCurrency(value: number, currencyCode: 'GBP' | 'USD' | 'EUR' = 'GBP'): string {
